@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Browser Tab Doctor — Options</title>
+    <link rel="stylesheet" href="../shared/styles.css" />
+    <link rel="stylesheet" href="./options.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <h1 data-i18n="appName">Browser Tab Doctor</h1>
+        <p class="subtitle">Settings apply immediately — no extension reload required.</p>
+      </header>
+
+      <form id="options-form" novalidate>
+        <fieldset>
+          <legend>Threshold &amp; schedule</legend>
+
+          <label>
+            <span data-i18n="optThreshold">Threshold (days)</span>
+            <input
+              type="number"
+              id="thresholdDays"
+              name="thresholdDays"
+              min="1"
+              max="3650"
+              step="1"
+              required
+              aria-describedby="threshold-hint"
+            />
+          </label>
+          <p id="threshold-hint" class="hint">Integer ≥ 1. Tabs idle this many days are flagged stale.</p>
+
+          <label>
+            <span data-i18n="optReportHour">Daily report time (hour)</span>
+            <input
+              type="number"
+              id="reportHour"
+              name="reportHour"
+              min="0"
+              max="23"
+              step="1"
+              required
+              aria-describedby="hour-hint"
+            />
+          </label>
+          <p id="hour-hint" class="hint">Local hour 0–23. Snapshot is generated at/after this hour once per day.</p>
+
+          <label class="checkbox">
+            <span data-i18n="optBadge">Show toolbar badge</span>
+            <input type="checkbox" id="badgeEnabled" name="badgeEnabled" />
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>History &amp; privacy</legend>
+
+          <label>
+            <span data-i18n="optRetention">History to keep (days)</span>
+            <input
+              type="number"
+              id="retentionSnapshots"
+              name="retentionSnapshots"
+              min="1"
+              max="3650"
+              step="1"
+              required
+            />
+          </label>
+
+          <label class="checkbox">
+            <span data-i18n="optTruncateUrls">Truncate URLs in report</span>
+            <input type="checkbox" id="truncateUrls" name="truncateUrls" />
+          </label>
+
+          <label class="checkbox">
+            <span data-i18n="optStoreQuery">Store query strings</span>
+            <input type="checkbox" id="storeQueryStrings" name="storeQueryStrings" />
+          </label>
+        </fieldset>
+
+        <div class="form-actions">
+          <button type="submit" class="primary" id="btn-save" data-i18n="save">Save</button>
+          <p id="status" role="status" aria-live="polite"></p>
+        </div>
+      </form>
+    </div>
+    <script type="module" src="./options.ts"></script>
+  </body>
+</html>

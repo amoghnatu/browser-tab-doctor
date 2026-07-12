@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Browser Tab Doctor — Report</title>
+    <link rel="stylesheet" href="../shared/styles.css" />
+    <link rel="stylesheet" href="../shared/options-panel.css" />
+    <link rel="stylesheet" href="./report.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="header">
+        <div class="header-left">
+          <h1 id="app-title">Browser Tab Doctor</h1>
+          <span class="host" id="host-browser" aria-live="polite"></span>
+        </div>
+        <div class="header-right">
+          <span class="threshold" id="threshold-label"></span>
+          <button type="button" id="btn-refresh" data-i18n="refresh" data-i18n-aria="refresh">
+            Refresh
+          </button>
+          <button type="button" class="ghost" id="btn-options" data-i18n="options">Options</button>
+        </div>
+      </header>
+
+      <div id="banner" class="banner clear" role="status" aria-live="polite"></div>
+
+      <section class="summary-bar" aria-label="Summary">
+        <p id="summary-text"></p>
+        <div class="toolbar" role="toolbar" aria-label="Report tools">
+          <label class="sort-label">
+            Category
+            <select id="filter-select" aria-label="Filter by category">
+              <option value="all" selected>All</option>
+              <option value="stale">Stale</option>
+              <option value="unknown">Unknown last-used</option>
+            </select>
+          </label>
+          <label class="sort-label">
+            Sort
+            <select id="sort-select" aria-label="Sort columns">
+              <option value="idle-desc" selected>Idle ▼</option>
+              <option value="idle-asc">Idle ▲</option>
+              <option value="title-asc">Title A–Z</option>
+              <option value="title-desc">Title Z–A</option>
+              <option value="last-desc">Last used ▼</option>
+              <option value="last-asc">Last used ▲</option>
+            </select>
+          </label>
+          <div id="bulk-actions" class="bulk-actions">
+            <button type="button" class="danger" id="btn-close-all">Close all listed</button>
+            <button type="button" class="danger" id="btn-close-selected" disabled>
+              Close selected
+            </button>
+            <button type="button" class="danger" id="btn-close-others" disabled>
+              Close others
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div class="table-wrap">
+        <table id="stale-table" aria-label="Tabs">
+          <thead>
+            <tr>
+              <th scope="col" class="cell-check">
+                <input
+                  type="checkbox"
+                  id="select-all"
+                  aria-label="Select all closable stale tabs"
+                />
+              </th>
+              <th scope="col" data-i18n="colTitle">Title</th>
+              <th scope="col" data-i18n="colUrl">URL</th>
+              <th scope="col" data-i18n="colFirstOpened">First opened</th>
+              <th scope="col" data-i18n="colLastUsed">Last used</th>
+              <th scope="col" data-i18n="colIdle">Idle</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="stale-body"></tbody>
+        </table>
+        <p id="empty-stale" class="muted hidden">No tabs to show.</p>
+      </div>
+    </div>
+
+    <!-- R10 bulk-close confirmation -->
+    <div
+      id="confirm-modal"
+      class="confirm-modal"
+      hidden
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="confirm-title"
+      aria-describedby="confirm-message"
+    >
+      <div class="confirm-dialog">
+        <h2 id="confirm-title">Confirm close</h2>
+        <p id="confirm-message"></p>
+        <div class="confirm-actions">
+          <button type="button" class="ghost" id="confirm-cancel">Cancel</button>
+          <button type="button" class="primary danger-solid" id="confirm-ok">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- In-page options popup -->
+    <div
+      id="options-modal"
+      class="options-modal"
+      hidden
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="options-modal-title"
+    >
+      <div class="options-modal-dialog">
+        <div class="options-modal-header">
+          <h2 id="options-modal-title">Options</h2>
+          <button
+            type="button"
+            class="ghost options-modal-close"
+            id="options-modal-close"
+            aria-label="Close options"
+          >
+            ×
+          </button>
+        </div>
+        <p class="options-modal-hint">
+          Settings apply immediately — no extension reload required.
+        </p>
+        <div id="options-modal-body"></div>
+      </div>
+    </div>
+
+    <script type="module" src="./report.ts"></script>
+  </body>
+</html>

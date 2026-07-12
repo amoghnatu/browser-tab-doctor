@@ -1,0 +1,143 @@
+/* Browser Tab Doctor — shared UI styles */
+:root {
+  --bg: #0f1419;
+  --surface: #1a2332;
+  --surface-2: #243044;
+  --border: #2d3a4f;
+  --text: #e7ecf3;
+  --text-muted: #8b9bb4;
+  --accent: #c0392b;
+  --accent-soft: rgba(192, 57, 43, 0.18);
+  --ok: #1e8449;
+  --ok-soft: rgba(30, 132, 73, 0.18);
+  --focus: #5b9fd4;
+  --radius: 10px;
+  --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--bg);
+}
+
+a {
+  color: var(--focus);
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+button:hover:not(:disabled) {
+  background: #2f3d55;
+  border-color: #3d4f6a;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: #a93226;
+  color: #fff;
+}
+
+button.primary:hover:not(:disabled) {
+  background: #a93226;
+}
+
+button.ghost {
+  background: transparent;
+}
+
+button.danger {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: #f5b7b1;
+}
+
+input[type="number"],
+input[type="text"] {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  width: 6rem;
+}
+
+input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.banner {
+  border-radius: var(--radius);
+  padding: 0.9rem 1.1rem;
+  margin: 0.75rem 0;
+  font-weight: 500;
+}
+
+.banner.stale {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  color: #fadbd8;
+}
+
+.banner.clear {
+  background: var(--ok-soft);
+  border: 1px solid var(--ok);
+  color: #d5f5e3;
+}
+
+.banner.empty {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}

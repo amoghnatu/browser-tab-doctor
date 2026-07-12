@@ -1,0 +1,98 @@
+{
+  "appName": {
+    "message": "Browser Tab Doctor",
+    "description": "Extension name"
+  },
+  "appDescription": {
+    "message": "Tracks open tabs, when they were last used, and suggests stale tabs to close.",
+    "description": "Extension description for store listings"
+  },
+  "bannerStale": {
+    "message": "You have $COUNT$ tabs not used in over $DAYS$ days — close the ones you don't need.",
+    "description": "Report page nudge banner when stale tabs exist",
+    "placeholders": {
+      "COUNT": { "content": "$1", "example": "12" },
+      "DAYS": { "content": "$2", "example": "7" }
+    }
+  },
+  "bannerAllClear": {
+    "message": "All clear — no tabs are older than $DAYS$ days.",
+    "description": "Report page banner when nothing is stale",
+    "placeholders": {
+      "DAYS": { "content": "$1", "example": "7" }
+    }
+  },
+  "bannerEmpty": {
+    "message": "No open tabs to analyze.",
+    "description": "Empty state when no tabs are open"
+  },
+  "summary": {
+    "message": "Open tabs: $OPEN$  |  Stale: $STALE$  |  Unknown last-used: $UNKNOWN$",
+    "description": "Report summary line",
+    "placeholders": {
+      "OPEN": { "content": "$1" },
+      "STALE": { "content": "$2" },
+      "UNKNOWN": { "content": "$3" }
+    }
+  },
+  "colTitle": { "message": "Title" },
+  "colUrl": { "message": "URL" },
+  "colFirstOpened": { "message": "First opened" },
+  "colLastUsed": { "message": "Last used" },
+  "colIdle": { "message": "Idle" },
+  "actionClose": { "message": "Close" },
+  "actionJump": { "message": "Jump to tab" },
+  "idleWayTooOld": {
+    "message": "way too old",
+    "description": "Idle label when timestamp is epoch/corrupt (e.g. 20646d)"
+  },
+  "closeAllStale": { "message": "Close all stale" },
+  "unknownSection": { "message": "Unknown last-used" },
+  "optThreshold": { "message": "Threshold (days)" },
+  "optReportHour": { "message": "Daily report time (hour)" },
+  "optBadge": { "message": "Show toolbar badge" },
+  "optRetention": { "message": "History to keep (days)" },
+  "optTruncateUrls": { "message": "Truncate URLs in report" },
+  "optStoreQuery": { "message": "Store query strings" },
+  "save": { "message": "Save" },
+  "refresh": { "message": "Refresh" },
+  "openReport": { "message": "Open full report" },
+  "options": { "message": "Options" },
+  "popupStaleSummary": {
+    "message": "$STALE$ stale of $OPEN$ open tabs",
+    "placeholders": {
+      "STALE": { "content": "$1" },
+      "OPEN": { "content": "$2" }
+    }
+  },
+  "popupAllClear": { "message": "All clear" },
+  "confirmCloseAll": {
+    "message": "Close $COUNT$ stale tabs? This cannot be undone.",
+    "placeholders": {
+      "COUNT": { "content": "$1" }
+    }
+  },
+  "saved": { "message": "Settings saved." },
+  "saveError": {
+    "message": "Could not save: $ERROR$",
+    "placeholders": {
+      "ERROR": { "content": "$1" }
+    }
+  },
+  "thresholdLabel": {
+    "message": "threshold: $DAYS$ days",
+    "placeholders": {
+      "DAYS": { "content": "$1" }
+    }
+  },
+  "topStale": { "message": "Top stale" },
+  "idleDays": {
+    "message": "$DAYS$d",
+    "placeholders": {
+      "DAYS": { "content": "$1" }
+    }
+  },
+  "internalTooltip": {
+    "message": "Browser internal page — cannot be closed by the extension"
+  }
+}

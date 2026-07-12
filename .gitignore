@@ -1,0 +1,22 @@
+node_modules/
+dist/
+release/
+*.log
+.DS_Store
+coverage/
+.vite/
+*.local
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+*.key
+secrets/
+.credentials/
+# Local sample captures may include personal/work URLs — keep them out of git
+sample-reports/
+# Generated zip packages
+*.zip
+browser-tab-doctor-*.zip

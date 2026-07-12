@@ -1,0 +1,291 @@
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem 3rem;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.host {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.threshold {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.summary-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0.5rem 0 1rem;
+  padding: 0.65rem 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.summary-bar p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.sort-label {
+  gap: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.bulk-actions.hidden {
+  display: none !important;
+}
+
+.cell-check {
+  width: 2.25rem;
+  text-align: center;
+  padding-left: 0.5rem;
+  padding-right: 0.35rem;
+}
+
+.cell-check input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.cell-check input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+/* R10 confirm dialog */
+.confirm-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.confirm-modal[hidden] {
+  display: none !important;
+}
+
+.confirm-dialog {
+  width: min(420px, 100%);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  padding: 1.15rem 1.25rem 1.2rem;
+}
+
+.confirm-dialog h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 650;
+}
+
+.confirm-dialog p {
+  margin: 0 0 1rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+button.danger-solid {
+  background: var(--accent);
+  border-color: #a93226;
+  color: #fff;
+}
+
+button.danger-solid:hover:not(:disabled) {
+  background: #a93226;
+}
+
+tr.row-selected td {
+  background: rgba(91, 159, 212, 0.08);
+}
+
+select {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+table {
+  width: 100%;
+  /* separate + 0 spacing keeps row borders continuous across all columns */
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  /* Explicit table-cell so flex wrappers never break the grid */
+  display: table-cell;
+}
+
+th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Corrupt / epoch idle — mild highlight on the whole row */
+tr.row-way-too-old td {
+  background: rgba(192, 57, 43, 0.12);
+}
+
+tr.row-way-too-old:hover td {
+  background: rgba(192, 57, 43, 0.18);
+}
+
+.cell-title {
+  font-weight: 550;
+  max-width: 220px;
+}
+
+.cell-url {
+  max-width: 220px;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+.cell-idle {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: #f5b7b1;
+  white-space: nowrap;
+}
+
+.cell-idle-way-too-old {
+  color: #f1948a;
+  font-style: italic;
+  letter-spacing: 0.01em;
+}
+
+/* Actions: td stays a real table-cell; flex only on the inner bar */
+.cell-actions {
+  white-space: nowrap;
+  width: 1%;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.actions button {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.85rem;
+  /* Never clip "Jump to tab" */
+  white-space: nowrap;
+  overflow: visible;
+  flex-shrink: 0;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+.muted {
+  color: var(--text-muted);
+  padding: 1rem;
+  margin: 0;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.cell-unknown-meta {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-style: italic;
+}

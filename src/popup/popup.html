@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Browser Tab Doctor</title>
+    <link rel="stylesheet" href="../shared/styles.css" />
+    <link rel="stylesheet" href="../shared/options-panel.css" />
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <div class="popup">
+      <!-- Main summary view -->
+      <div id="view-main">
+        <header>
+          <h1 data-i18n="appName">Browser Tab Doctor</h1>
+          <p id="summary" class="summary" aria-live="polite"></p>
+        </header>
+
+        <section id="stale-section" class="stale-section" aria-label="Top stale tabs">
+          <h2 data-i18n="topStale">Top stale</h2>
+          <ul id="stale-list"></ul>
+          <p id="all-clear" class="all-clear hidden" data-i18n="popupAllClear">All clear</p>
+        </section>
+
+        <footer class="actions">
+          <button type="button" class="primary" id="btn-report" data-i18n="openReport">
+            Open full report
+          </button>
+          <button type="button" class="ghost" id="btn-options" data-i18n="options">Options</button>
+        </footer>
+      </div>
+
+      <!-- Options view (same popup window — not a new tab) -->
+      <div id="view-options" class="hidden" hidden>
+        <header class="options-view-header">
+          <h1 data-i18n="options">Options</h1>
+          <button type="button" class="ghost" id="btn-options-back" aria-label="Back">← Back</button>
+        </header>
+        <div id="popup-options-body"></div>
+      </div>
+    </div>
+    <script type="module" src="./popup.ts"></script>
+  </body>
+</html>

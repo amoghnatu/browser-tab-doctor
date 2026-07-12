@@ -1,0 +1,87 @@
+/* Sized for the embedded options popup (open_in_tab: false) */
+html,
+body {
+  min-width: 360px;
+  max-width: 420px;
+}
+
+.page {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 1rem 1rem 1.25rem;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 650;
+}
+
+.subtitle {
+  margin: 0.4rem 0 1.25rem;
+  color: var(--text-muted);
+}
+
+fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 1rem 1.1rem 1.15rem;
+  margin: 0 0 1rem;
+}
+
+legend {
+  padding: 0 0.4rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.85rem;
+}
+
+label.checkbox {
+  justify-content: space-between;
+}
+
+label.checkbox input {
+  width: auto;
+}
+
+.hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+#status {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+#status.ok {
+  color: #82e0aa;
+}
+
+#status.err {
+  color: #f5b7b1;
+}
+
+input:invalid {
+  border-color: var(--accent);
+}
