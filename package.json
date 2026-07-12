@@ -16,7 +16,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "validate": "node scripts/validate-package.mjs",
-    "ci": "npm test && npm run build && npm run validate"
+    "ci": "npm test && npm run build && npm run validate",
+    "pack": "node scripts/pack-release.mjs",
+    "release": "npm run ci && npm run pack"
   },
   "dependencies": {
     "webextension-polyfill": "^0.12.0"
