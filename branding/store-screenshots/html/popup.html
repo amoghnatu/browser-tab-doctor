@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Browser Tab Doctor — Popup</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./popup.css" />
+  <style>
+    html, body {
+      width: 1280px;
+      height: 800px;
+      margin: 0;
+      background: #0a0e13;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .chrome-chrome {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0;
+    }
+    .fake-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #1c2330;
+      border: 1px solid #2d3a4f;
+      border-bottom: none;
+      border-radius: 12px 12px 0 0;
+      padding: 10px 14px;
+      width: 360px;
+      box-sizing: border-box;
+    }
+    .fake-toolbar .pill {
+      flex: 1;
+      height: 28px;
+      border-radius: 14px;
+      background: #0f1419;
+      border: 1px solid #2d3a4f;
+      color: #8b9bb4;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+    }
+    .ext-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: #1a2332;
+      border: 1px solid #c0392b;
+      display: grid;
+      place-items: center;
+      position: relative;
+      font-size: 11px;
+      color: #f5b7b1;
+      font-weight: 700;
+    }
+    .ext-icon::after {
+      content: "9";
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: #c0392b;
+      color: #fff;
+      font-size: 10px;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      padding: 0 3px;
+    }
+    .popup {
+      width: 360px;
+      border-radius: 0 0 12px 12px;
+      border: 1px solid #2d3a4f;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.55);
+    }
+    .caption {
+      margin-top: 1.5rem;
+      color: #8b9bb4;
+      font-size: 15px;
+      text-align: center;
+      max-width: 420px;
+    }
+  </style>
+</head>
+<body>
+  <div style="display:flex;flex-direction:column;align-items:center;">
+    <div class="chrome-chrome">
+      <div class="fake-toolbar">
+        <div class="pill">https://example.com/reading-list</div>
+        <div class="ext-icon" title="Browser Tab Doctor">BD</div>
+      </div>
+      <div class="popup">
+        <div id="view-main">
+          <header>
+            <h1>Browser Tab Doctor</h1>
+            <p id="summary" class="summary">9 stale of 42 open tabs</p>
+          </header>
+          <section class="stale-section">
+            <h2>Top stale</h2>
+            <ul id="stale-list">
+              <li><span class="title">Rust Book — Ownership</span><span class="idle">30d</span></li>
+              <li><span class="title">Wikipedia — Cascading Style Sheets</span><span class="idle">24d</span></li>
+              <li><span class="title">MDN — WebExtensions</span><span class="idle">22d</span></li>
+            </ul>
+          </section>
+          <footer class="actions">
+            <button type="button" class="primary">Open full report</button>
+            <button type="button" class="ghost">Options</button>
+          </footer>
+        </div>
+      </div>
+    </div>
+    <p class="caption">Toolbar popup: quick summary, top stale tabs, and one click to the full report.</p>
+  </div>
+</body>
+</html>

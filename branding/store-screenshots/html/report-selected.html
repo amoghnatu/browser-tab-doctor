@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Browser Tab Doctor — Selection</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./report.css" />
+  <style>body { min-height: 800px; background: var(--bg); }</style>
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <div class="header-left">
+        <h1>Browser Tab Doctor</h1>
+        <span class="host">Chrome 131</span>
+      </div>
+      <div class="header-right">
+        <span class="threshold">threshold: 7 days</span>
+        <button type="button">Refresh</button>
+        <button type="button" class="ghost">Options</button>
+      </div>
+    </header>
+
+    <div class="banner stale">
+      You have 6 tabs not used in over 7 days — close the ones you don't need.
+    </div>
+
+    <section class="summary-bar">
+      <p>Open tabs: 28 &nbsp;|&nbsp; Stale: 6 &nbsp;|&nbsp; Unknown last-used: 0</p>
+      <div class="toolbar">
+        <label class="sort-label">Category
+          <select><option selected>Stale (6)</option></select>
+        </label>
+        <label class="sort-label">Sort
+          <select><option selected>Idle ▼</option></select>
+        </label>
+        <div class="bulk-actions">
+          <button type="button" class="danger">Close all stale (6)</button>
+          <button type="button" class="danger">Close selected (3)</button>
+          <button type="button" class="danger">Close others (3)</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="cell-check"><input type="checkbox" /></th>
+            <th>Title</th>
+            <th>URL</th>
+            <th>First opened</th>
+            <th>Last used</th>
+            <th>Idle</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="row-selected">
+            <td class="cell-check"><input type="checkbox" checked /></td>
+            <td class="cell-title">National parks trip ideas</td>
+            <td class="cell-url">https://www.nps.gov/index.htm</td>
+            <td>May 10, 2026</td>
+            <td>Jun 10, 2026</td>
+            <td class="cell-idle">32d</td>
+            <td class="cell-actions"><div class="actions"><button>Close</button><button class="ghost">Jump to tab</button></div></td>
+          </tr>
+          <tr class="row-selected">
+            <td class="cell-check"><input type="checkbox" checked /></td>
+            <td class="cell-title">Board game rules — Wingspan</td>
+            <td class="cell-url">https://www.stonemaiergames.com/games/wingspan</td>
+            <td>May 22, 2026</td>
+            <td>Jun 15, 2026</td>
+            <td class="cell-idle">27d</td>
+            <td class="cell-actions"><div class="actions"><button>Close</button><button class="ghost">Jump to tab</button></div></td>
+          </tr>
+          <tr>
+            <td class="cell-check"><input type="checkbox" /></td>
+            <td class="cell-title">Learn Python the Hard Way</td>
+            <td class="cell-url">https://learnpythonthehardway.org</td>
+            <td>Jun 1, 2026</td>
+            <td>Jun 20, 2026</td>
+            <td class="cell-idle">22d</td>
+            <td class="cell-actions"><div class="actions"><button>Close</button><button class="ghost">Jump to tab</button></div></td>
+          </tr>
+          <tr class="row-selected">
+            <td class="cell-check"><input type="checkbox" checked /></td>
+            <td class="cell-title">Indoor plant watering chart</td>
+            <td class="cell-url">https://www.thesill.com/blogs/care-miscellaneous</td>
+            <td>Jun 5, 2026</td>
+            <td>Jun 24, 2026</td>
+            <td class="cell-idle">18d</td>
+            <td class="cell-actions"><div class="actions"><button>Close</button><button class="ghost">Jump to tab</button></div></td>
+          </tr>
+          <tr>
+            <td class="cell-check"><input type="checkbox" /></td>
+            <td class="cell-title">CSS Grid garden</td>
+            <td class="cell-url">https://cssgridgarden.com</td>
+            <td>Jun 12, 2026</td>
+            <td>Jun 30, 2026</td>
+            <td class="cell-idle">12d</td>
+            <td class="cell-actions"><div class="actions"><button>Close</button><button class="ghost">Jump to tab</button></div></td>
+          </tr>
+          <tr>
+            <td class="cell-check"><input type="checkbox" /></td>
+            <td class="cell-title">Public domain sheet music</td>
+            <td class="cell-url">https://imslp.org</td>
+            <td>Jun 18, 2026</td>
+            <td>Jul 2, 2026</td>
+            <td class="cell-idle">10d</td>
+            <td class="cell-actions"><div class="actions"><button>Close</button><button class="ghost">Jump to tab</button></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

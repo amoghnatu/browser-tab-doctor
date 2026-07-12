@@ -18,7 +18,8 @@
     "validate": "node scripts/validate-package.mjs",
     "ci": "npm test && npm run build && npm run validate",
     "pack": "node scripts/pack-release.mjs",
-    "release": "npm run ci && npm run pack"
+    "release": "npm run ci && npm run pack",
+    "screenshots": "node scripts/capture-store-screenshots.mjs"
   },
   "dependencies": {
     "webextension-polyfill": "^0.12.0"

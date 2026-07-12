@@ -1,0 +1,112 @@
+/* Embeddable options panel (report modal + toolbar popup) */
+
+.options-panel fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 0.75rem 0.9rem 0.9rem;
+  margin: 0 0 0.75rem;
+}
+
+.options-panel legend {
+  padding: 0 0.35rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.options-panel label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+}
+
+.options-panel label.checkbox input {
+  width: auto;
+}
+
+.options-panel input[type="number"] {
+  width: 5rem;
+}
+
+.options-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.options-panel-status {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.options-panel-status.ok {
+  color: #82e0aa;
+}
+
+.options-panel-status.err {
+  color: #f5b7b1;
+}
+
+/* ── Report-page modal ─────────────────────────────────────────── */
+
+.options-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2.5rem 1rem 1.5rem;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.options-modal[hidden] {
+  display: none !important;
+}
+
+.options-modal-dialog {
+  width: min(440px, 100%);
+  max-height: calc(100vh - 4rem);
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  padding: 1rem 1.15rem 1.15rem;
+}
+
+.options-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.options-modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 650;
+}
+
+.options-modal-close {
+  flex-shrink: 0;
+  min-width: 2rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.options-modal-hint {
+  margin: 0 0 0.85rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}

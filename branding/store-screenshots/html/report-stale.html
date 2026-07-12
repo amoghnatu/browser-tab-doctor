@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Browser Tab Doctor — Report</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./report.css" />
+  <style>
+    body { min-height: 800px; background: var(--bg); }
+    .shot-frame { max-width: 1200px; margin: 0 auto; }
+  </style>
+</head>
+<body>
+  <div class="page shot-frame">
+    <header class="header">
+      <div class="header-left">
+        <h1>Browser Tab Doctor</h1>
+        <span class="host">Chrome 131</span>
+      </div>
+      <div class="header-right">
+        <span class="threshold">threshold: 7 days</span>
+        <button type="button">Refresh</button>
+        <button type="button" class="ghost">Options</button>
+      </div>
+    </header>
+
+    <div class="banner stale" role="status">
+      You have 9 tabs not used in over 7 days — close the ones you don't need.
+    </div>
+
+    <section class="summary-bar">
+      <p>Open tabs: 42 &nbsp;|&nbsp; Stale: 9 &nbsp;|&nbsp; Unknown last-used: 2</p>
+      <div class="toolbar">
+        <label class="sort-label">Category
+          <select><option selected>All (11)</option></select>
+        </label>
+        <label class="sort-label">Sort
+          <select><option selected>Idle ▼</option></select>
+        </label>
+        <div class="bulk-actions">
+          <button type="button" class="danger">Close all listed (11)</button>
+          <button type="button" class="danger" disabled>Close selected (0)</button>
+          <button type="button" class="danger">Close others (11)</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="cell-check"><input type="checkbox" /></th>
+            <th>Title</th>
+            <th>URL</th>
+            <th>First opened</th>
+            <th>Last used</th>
+            <th>Idle</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="row-way-too-old">
+            <td class="cell-check"><input type="checkbox" /></td>
+            <td class="cell-title">How to organize a digital garden</td>
+            <td class="cell-url">https://example.com/digital-garden-guide</td>
+            <td class="cell-unknown-meta">—</td>
+            <td class="cell-unknown-meta">—</td>
+            <td class="cell-idle cell-idle-way-too-old">way too old</td>
+            <td class="cell-actions"><div class="actions"><button>Close</button><button class="ghost">Jump to tab</button></div></td>
+          </tr>
+          <tr class="row-way-too-old">
+            <td class="cell-check"><input type="checkbox" /></td>
+            <td class="cell-title">Local library hours — Maple Street</td>
+            <td class="cell-url">https://citylibrary.example.org/hours</td>
+            <td class="cell-unknown-meta">—</td>
+            <td class="cell-unknown-meta">—</td>
+            <td class="cell-idle cell-idle-way-too-old">way too old</td>
+            <td class="cell-actions"><div class="actions"><button>Close</button><button class="ghost">Jump to tab</button></div></td>
+          </tr>
+          <tr>
+            <td class="cell-check"><input type="checkbox" /></td>
+            <td class="cell-title">Rust Book — Ownership</td>
+            <td class="cell-url">https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html</td>
+            <td>May 2, 2026</td>
+            <td>Jun 12, 2026</td>
+            <td class="cell-idle">30d</td>
+            <td class="cell-actions"><div class="actions"><button>Close</button><button class="ghost">Jump to tab</button></div></td>
+          </tr>
+          <tr>
+            <td class="cell-check"><input type="checkbox" /></td>
+            <td class="cell-title">Wikipedia — Cascading Style Sheets</td>
+            <td class="cell-url">https://en.wikipedia.org/wiki/CSS</td>
+            <td>May 18, 2026</td>
+            <td>Jun 18, 2026</td>
+            <td class="cell-idle">24d</td>
+            <td class="cell-actions"><div class="actions"><button>Close</button><button class="ghost">Jump to tab</button></div></td>
+          </tr>
+          <tr>
+            <td class="cell-check"><input type="checkbox" /></td>
+            <td class="cell-title">MDN — WebExtensions</td>
+            <td class="cell-url">https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions</td>
+            <td>Jun 1, 2026</td>
+            <td>Jun 20, 2026</td>
+            <td class="cell-idle">22d</td>
+            <td class="cell-actions"><div class="actions"><button>Close</button><button class="ghost">Jump to tab</button></div></td>
+          </tr>
+          <tr>
+            <td class="cell-check"><input type="checkbox" /></td>
+            <td class="cell-title">Hiking trails near Portland</td>
+            <td class="cell-url">https://www.alltrails.com/us/oregon/portland</td>
+            <td>Jun 3, 2026</td>
+            <td>Jun 22, 2026</td>
+            <td class="cell-idle">20d</td>
+            <td class="cell-actions"><div class="actions"><button>Close</button><button class="ghost">Jump to tab</button></div></td>
+          </tr>
+          <tr>
+            <td class="cell-check"><input type="checkbox" /></td>
+            <td class="cell-title">Recipe — sourdough discard crackers</td>
+            <td class="cell-url">https://www.kingarthurbaking.com/recipes</td>
+            <td>Jun 8, 2026</td>
+            <td>Jun 25, 2026</td>
+            <td class="cell-idle">17d</td>
+            <td class="cell-actions"><div class="actions"><button>Close</button><button class="ghost">Jump to tab</button></div></td>
+          </tr>
+          <tr>
+            <td class="cell-check"><input type="checkbox" /></td>
+            <td class="cell-title">TypeScript Handbook — Narrowing</td>
+            <td class="cell-url">https://www.typescriptlang.org/docs/handbook/2/narrowing.html</td>
+            <td>Jun 10, 2026</td>
+            <td>Jun 28, 2026</td>
+            <td class="cell-idle">14d</td>
+            <td class="cell-actions"><div class="actions"><button>Close</button><button class="ghost">Jump to tab</button></div></td>
+          </tr>
+          <tr>
+            <td class="cell-check"><input type="checkbox" /></td>
+            <td class="cell-title">OpenStreetMap — city bike routes</td>
+            <td class="cell-url">https://www.openstreetmap.org/#map=13/45.52/-122.68</td>
+            <td>Jun 15, 2026</td>
+            <td>Jul 1, 2026</td>
+            <td class="cell-idle">11d</td>
+            <td class="cell-actions"><div class="actions"><button>Close</button><button class="ghost">Jump to tab</button></div></td>
+          </tr>
+          <tr>
+            <td class="cell-check"><input type="checkbox" /></td>
+            <td class="cell-title">Arcade Fire — discography notes</td>
+            <td class="cell-url">https://musicbrainz.org/artist/example</td>
+            <td>Jun 20, 2026</td>
+            <td>Jul 3, 2026</td>
+            <td class="cell-idle">9d</td>
+            <td class="cell-actions"><div class="actions"><button>Close</button><button class="ghost">Jump to tab</button></div></td>
+          </tr>
+          <tr>
+            <td class="cell-check"><input type="checkbox" /></td>
+            <td class="cell-title">FreeCodeCamp — responsive design</td>
+            <td class="cell-url">https://www.freecodecamp.org/learn</td>
+            <td>Jun 22, 2026</td>
+            <td>Jul 4, 2026</td>
+            <td class="cell-idle">8d</td>
+            <td class="cell-actions"><div class="actions"><button>Close</button><button class="ghost">Jump to tab</button></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Browser Tab Doctor — Options</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./report.css" />
+  <link rel="stylesheet" href="./options-panel.css" />
+  <style>
+    body { min-height: 800px; background: var(--bg); }
+    .dim {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 3rem 1rem;
+    }
+    .page-dimmed { filter: brightness(0.55); pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div class="page page-dimmed">
+    <header class="header">
+      <div class="header-left">
+        <h1>Browser Tab Doctor</h1>
+        <span class="host">Chrome 131</span>
+      </div>
+      <div class="header-right">
+        <span class="threshold">threshold: 7 days</span>
+        <button type="button">Refresh</button>
+        <button type="button" class="ghost">Options</button>
+      </div>
+    </header>
+    <div class="banner stale">You have 9 tabs not used in over 7 days — close the ones you don't need.</div>
+    <section class="summary-bar">
+      <p>Open tabs: 42 &nbsp;|&nbsp; Stale: 9 &nbsp;|&nbsp; Unknown last-used: 2</p>
+    </section>
+  </div>
+
+  <div class="dim">
+    <div class="options-modal-dialog" style="position:relative;">
+      <div class="options-modal-header">
+        <h2>Options</h2>
+        <button type="button" class="ghost options-modal-close">×</button>
+      </div>
+      <p class="options-modal-hint">Settings apply immediately — no extension reload required.</p>
+      <div class="options-panel">
+        <form class="options-panel-form">
+          <fieldset>
+            <legend>Threshold &amp; schedule</legend>
+            <label><span>Threshold (days)</span><input type="number" value="7" readonly /></label>
+            <label><span>Daily report time (hour)</span><input type="number" value="9" readonly /></label>
+            <label class="checkbox"><span>Show toolbar badge</span><input type="checkbox" checked disabled /></label>
+          </fieldset>
+          <fieldset>
+            <legend>History &amp; privacy</legend>
+            <label><span>History to keep (days)</span><input type="number" value="90" readonly /></label>
+            <label class="checkbox"><span>Truncate URLs in report</span><input type="checkbox" disabled /></label>
+            <label class="checkbox"><span>Store query strings</span><input type="checkbox" checked disabled /></label>
+          </fieldset>
+          <div class="options-panel-actions">
+            <button type="button" class="primary">Save</button>
+            <p class="options-panel-status ok">Settings saved.</p>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

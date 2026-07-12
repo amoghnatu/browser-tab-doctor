@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Browser Tab Doctor — All clear</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./report.css" />
+  <style>body { min-height: 800px; background: var(--bg); }</style>
+</head>
+<body>
+  <div class="page">
+    <header class="header">
+      <div class="header-left">
+        <h1>Browser Tab Doctor</h1>
+        <span class="host">Chrome 131</span>
+      </div>
+      <div class="header-right">
+        <span class="threshold">threshold: 7 days</span>
+        <button type="button">Refresh</button>
+        <button type="button" class="ghost">Options</button>
+      </div>
+    </header>
+
+    <div class="banner clear">
+      All clear — no tabs are older than 7 days.
+    </div>
+
+    <section class="summary-bar">
+      <p>Open tabs: 14 &nbsp;|&nbsp; Stale: 0 &nbsp;|&nbsp; Unknown last-used: 0</p>
+      <div class="toolbar">
+        <label class="sort-label">Category
+          <select><option selected>All (0)</option></select>
+        </label>
+        <label class="sort-label">Sort
+          <select><option selected>Idle ▼</option></select>
+        </label>
+        <div class="bulk-actions">
+          <button type="button" class="danger" disabled>Close all listed (0)</button>
+          <button type="button" class="danger" disabled>Close selected (0)</button>
+          <button type="button" class="danger" disabled>Close others (0)</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="table-wrap">
+      <p class="muted">No open tabs to analyze in the report.</p>
+    </div>
+
+    <p style="margin-top: 2rem; color: var(--text-muted); max-width: 36rem; line-height: 1.55;">
+      When nothing is stale, the toolbar badge stays empty and the report shows this calm “all clear” state —
+      so the extension only nudges you when there’s something useful to do.
+    </p>
+  </div>
+</body>
+</html>
