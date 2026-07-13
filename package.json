@@ -1,6 +1,6 @@
 {
   "name": "browser-tab-doctor",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Browser extension that tracks open tabs, last-used times, and suggests stale tabs to close.",
   "private": true,
   "type": "module",

@@ -46,6 +46,9 @@ Never zip `node_modules`, `src`, or secrets. Store packages must have `manifest.
 1. Create a developer account: [addons.mozilla.org/developers](https://addons.mozilla.org/developers/)
 2. Confirm the Firefox add-on ID in `manifest.firefox.json` → `browser_specific_settings.gecko.id`  
    (currently `browser-tab-doctor@amoghnatu.github.io` — fine to keep; don’t change after first AMO publish without a migration plan)
+3. **Required since Nov 2025:** `browser_specific_settings.gecko.data_collection_permissions`  
+   - Fully local extensions (no data leaves the browser): `"required": ["none"]`  
+   - See [Firefox built-in data consent](https://extensionworkshop.com/documentation/develop/firefox-builtin-data-consent/)
 
 ### Build the Firefox zip
 
