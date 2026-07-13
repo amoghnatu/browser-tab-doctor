@@ -24,32 +24,57 @@ Never zip `node_modules`, `src`, or secrets. Store packages must have `manifest.
 
 ## Chrome Web Store
 
-1. Register at [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole) (one-time fee).
-2. **New item** → upload `browser-tab-doctor-chromium-*.zip`.
-3. Fill store listing:
-   - **Name:** Browser Tab Doctor  
-   - **Summary / description:** tab inventory, stale detection, bulk close, privacy-local  
-   - **Category:** Productivity  
-   - **Language:** English  
-   - **Screenshots:** 1280×800 or 640×400 of the report page (at least 1)  
-   - **Icon:** 128×128 (use `icons/128.png`)  
-   - **Privacy:** single-purpose description; declare that data stays in `chrome.storage` with no remote servers  
-4. Permissions justification: `tabs`, `storage`, `alarms` (see Spec permissions rationale).
-5. Submit for review. First review can take days; updates are usually faster.
+**Live listing:** [Browser Tab Doctor on the Chrome Web Store](https://chromewebstore.google.com/detail/bgkfobghhceegfddkiljnmifehjpahgp)
 
-**Edge Add-ons:** [Partner Center](https://partner.microsoft.com/dashboard) can import from Chrome Web Store or accept the same Chromium zip. Edge uses Chromium MV3.
+### First publish (done) / updates
 
-**Opera / Brave:** Chromium package works; Opera Add-ons and “Load unpacked” / CRX as preferred.
+1. [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole)
+2. Open the item → **Package** → upload a new `release/browser-tab-doctor-chromium-*.zip` (bump `version` in manifests first)
+3. Fill listing, screenshots (`branding/store-screenshots/`), privacy answers
+4. Submit for review
+
+**Edge Add-ons:** [Partner Center](https://partner.microsoft.com/dashboard) can import from Chrome Web Store or accept the same Chromium zip.
+
+**Opera / Brave:** Users can install from the Chrome Web Store where supported, or load the Chromium package.
 
 ---
 
-## Firefox Add-ons (AMO)
+## Firefox Add-ons (AMO) — not published yet
 
-1. Create a developer account on [addons.mozilla.org](https://addons.mozilla.org/developers/).
-2. Ensure `browser_specific_settings.gecko.id` is set (already: `browser-tab-doctor@example.com` — **change this to your own ID** before first public submission, e.g. `browser-tab-doctor@yourdomain.com`).
-3. Upload the Firefox zip (`web-ext build` output).
-4. Complete listing, privacy policy URL (can be a GitHub wiki/`PRIVACY.md`), and source code notes if minified.
-5. Automated review often publishes quickly; some listings get a later manual check.
+### One-time setup
+
+1. Create a developer account: [addons.mozilla.org/developers](https://addons.mozilla.org/developers/)
+2. Confirm the Firefox add-on ID in `manifest.firefox.json` → `browser_specific_settings.gecko.id`  
+   (currently `browser-tab-doctor@amoghnatu.github.io` — fine to keep; don’t change after first AMO publish without a migration plan)
+
+### Build the Firefox zip
+
+```bash
+npm run release
+# Zip is at: release/browser-tab-doctor-firefox-<version>.zip
+# Or:
+npx web-ext build -s dist/firefox -a release --overwrite-dest
+```
+
+### Submit on AMO
+
+1. Go to [Submit a New Add-on](https://addons.mozilla.org/developers/addon/submit/distribution)
+2. Choose **On this site** (listed on AMO) unless you only want unlisted
+3. Upload `release/browser-tab-doctor-firefox-*.zip`
+4. Fill listing (reuse Chrome description + screenshots from `branding/store-screenshots/`)
+5. **Privacy policy URL** (required for many permissions):  
+   `https://github.com/amoghnatu/browser-tab-doctor/blob/main/PRIVACY.md`
+6. **Categories / tags:** e.g. Tabs, Privacy & Security, or Productivity
+7. Answer data collection honestly (same as Chrome: web history / open-tab metadata, local only, not sold)
+8. If asked about minified code: note source is on GitHub; build is Vite-bundled TypeScript
+9. Submit — AMO often uses **automated review** first; listing may go live same day, with possible later manual review
+
+### Local test before submit
+
+```bash
+npx web-ext run -s dist/firefox
+# or: about:debugging → This Firefox → Load Temporary Add-on → dist/firefox/manifest.json
+```
 
 ---
 

@@ -8,6 +8,13 @@ A **Manifest V3** browser extension that inventories open tabs, tracks first-ope
 
 > Each install only sees **its own browser**. Install separately in Chrome, Edge, Firefox, etc.
 
+## Install
+
+| Browser | Link |
+|---------|------|
+| **Chrome** (and other Chromium browsers via the Web Store) | [Chrome Web Store — Browser Tab Doctor](https://chromewebstore.google.com/detail/bgkfobghhceegfddkiljnmifehjpahgp) |
+| **Firefox** | Not published on AMO yet — use a temporary load from `dist/firefox` (see below) or follow [PUBLISHING.md](./PUBLISHING.md) |
+
 ## Features
 
 - Startup inventory + live tab tracking (`firstOpenedAt` / `lastActiveAt`)
