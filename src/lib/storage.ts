@@ -230,6 +230,20 @@ export async function getLatestSnapshot(): Promise<ReportSnapshot | null> {
   return (await getSnapshot(dateKey)) ?? null;
 }
 
+// ── R12 notification cooldown (local only — never sync) ───────────────────
+
+export async function getLastNotificationAt(): Promise<number | null> {
+  const { local } = requireDeps();
+  const r = await local.get(STORAGE_KEYS.lastNotificationAt);
+  const v = r[STORAGE_KEYS.lastNotificationAt];
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+export async function setLastNotificationAt(epochMs: number): Promise<void> {
+  const { local } = requireDeps();
+  await local.set({ [STORAGE_KEYS.lastNotificationAt]: epochMs });
+}
+
 // ── Session map (tabId → stable key) ────────────────────────────────────────
 
 export async function getSessionMap(): Promise<Record<number, string>> {

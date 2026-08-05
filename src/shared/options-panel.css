@@ -33,6 +33,13 @@
   width: 5rem;
 }
 
+.options-panel-hint {
+  margin: 0.35rem 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
 .options-panel-actions {
   display: flex;
   align-items: center;

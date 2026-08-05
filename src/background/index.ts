@@ -5,6 +5,7 @@
 import browser from "webextension-polyfill";
 import {
   ALARM_NAMES,
+  PROACTIVE_NOTIFICATION_ID,
   type Config,
   type ExtensionState,
   type Msg,
@@ -15,6 +16,10 @@ import { detectHostBrowser } from "../lib/browser-info";
 import { coerceTimestamp, localDateKey, localHour } from "../lib/date";
 import * as logger from "../lib/logger";
 import { isMsg } from "../lib/messaging";
+import {
+  evaluateProactiveNotification,
+  notificationMessage,
+} from "../lib/notify";
 import { createTabRecord, reconcileTabs, type LiveTab } from "../lib/reconcile";
 import { buildSnapshot, shouldGenerateDailyReport } from "../lib/snapshot";
 import { computeStalenessFromRecords, countByWindow } from "../lib/staleness";
@@ -112,6 +117,60 @@ async function recomputeAndRefreshBadge(): Promise<void> {
   const open = (await storage.getAllTabRecords()).filter((r) => r.isOpen);
   const { staleCount } = computeStalenessFromRecords(open, cfg);
   await refreshBadge(browser, cfg, staleCount);
+  await maybeShowProactiveNotification();
+}
+
+/** R12: rare system notification when load is high and long-idle share is high. */
+async function maybeShowProactiveNotification(): Promise<void> {
+  try {
+    const cfg = await storage.getConfig();
+    const open = (await storage.getAllTabRecords()).filter((r) => r.isOpen);
+    const lastAt = await storage.getLastNotificationAt();
+    const now = Date.now();
+    const decision = evaluateProactiveNotification(open, cfg, lastAt, now);
+    if (!decision.shouldNotify) {
+      logger.log("proactive notify skip", decision.reason, {
+        open: decision.openCount,
+        longIdle: decision.longIdleCount,
+        share: decision.sharePercent,
+      });
+      return;
+    }
+    await browser.notifications.create(PROACTIVE_NOTIFICATION_ID, {
+      type: "basic",
+      iconUrl: browser.runtime.getURL("icons/128.png"),
+      title: "Browser Tab Doctor",
+      message: notificationMessage(decision, cfg.notifyLongIdleDays),
+    });
+    // Only advance cooldown after a successful create
+    await storage.setLastNotificationAt(now);
+    logger.log("proactive notification shown", decision);
+  } catch (e) {
+    // Permission denied / OS blocked — do not set cooldown
+    logger.warn("proactive notification failed", e);
+  }
+}
+
+async function openReportFromNotification(): Promise<void> {
+  const url = browser.runtime.getURL("report.html");
+  try {
+    const existing = await browser.tabs.query({ url });
+    if (existing[0]?.id != null) {
+      await browser.tabs.update(existing[0].id, { active: true });
+      if (existing[0].windowId != null) {
+        await browser.windows.update(existing[0].windowId, { focused: true });
+      }
+    } else {
+      await browser.tabs.create({ url });
+    }
+  } catch {
+    await browser.tabs.create({ url });
+  }
+  try {
+    await browser.notifications.clear(PROACTIVE_NOTIFICATION_ID);
+  } catch {
+    // ignore
+  }
 }
 
 async function ensureAlarms(): Promise<void> {
@@ -486,12 +545,24 @@ browser.alarms.onAlarm.addListener((alarm) => {
         await recomputeAndRefreshBadge();
       } else if (alarm.name === ALARM_NAMES.daily) {
         await maybeGenerateDailyReport();
+        // Primary R12 evaluation path (hourly; cooldown prevents spam)
+        await maybeShowProactiveNotification();
       }
     } catch (e) {
       logger.error("onAlarm", e);
     }
   })();
 });
+
+// R12: open report when user clicks the proactive notification
+if (browser.notifications?.onClicked) {
+  browser.notifications.onClicked.addListener((notificationId) => {
+    if (notificationId !== PROACTIVE_NOTIFICATION_ID) return;
+    void openReportFromNotification().catch((e) =>
+      logger.error("notification click", e),
+    );
+  });
+}
 
 browser.storage.onChanged.addListener((changes, area) => {
   void (async () => {

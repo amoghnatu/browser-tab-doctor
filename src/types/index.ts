@@ -1,6 +1,6 @@
 /** Shared TypeScript types for Browser Tab Doctor (v1). */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export interface PrivacyConfig {
   /** When true, URLs shown in reports are truncated for display. */
@@ -24,6 +24,17 @@ export interface Config {
   privacy: PrivacyConfig;
   /** Gates verbose console logging. Default false. */
   debug: boolean;
+  // ── R12 proactive notifications ─────────────────────────────────
+  /** Master switch for system notifications. Default true. */
+  notificationsEnabled: boolean;
+  /** Require at least this many open tabs. Default 20. */
+  notifyMinOpenTabs: number;
+  /** Tab is long-idle when idleDays ≥ this (or last-used unknown). Default 15. */
+  notifyLongIdleDays: number;
+  /** Require long-idle / open × 100 ≥ this percent. Default 35. */
+  notifySharePercent: number;
+  /** Min days between two shown notifications. Default 7. */
+  notifyCooldownDays: number;
 }
 
 export const DEFAULT_CONFIG: Config = {
@@ -38,6 +49,11 @@ export const DEFAULT_CONFIG: Config = {
     storeQueryStrings: true,
   },
   debug: false,
+  notificationsEnabled: true,
+  notifyMinOpenTabs: 20,
+  notifyLongIdleDays: 15,
+  notifySharePercent: 35,
+  notifyCooldownDays: 7,
 };
 
 /** Stable identity for a tab, independent of volatile tabId. */
@@ -142,7 +158,12 @@ export const STORAGE_KEYS = {
   tabPrefix: "tab:",
   reportPrefix: "report:",
   sessionMap: "tabIdToKey",
+  /** R12 — last successful proactive notification (local only). */
+  lastNotificationAt: "lastNotificationAt",
 } as const;
+
+/** Fixed notification id for create/clear/click (R12). */
+export const PROACTIVE_NOTIFICATION_ID = "tab-doctor-proactive";
 
 export const ALARM_NAMES = {
   daily: "daily-check",

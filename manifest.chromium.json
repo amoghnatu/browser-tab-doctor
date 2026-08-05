@@ -2,10 +2,10 @@
   "manifest_version": 3,
   "name": "__MSG_appName__",
   "description": "__MSG_appDescription__",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "default_locale": "en",
   "minimum_chrome_version": "121",
-  "permissions": ["tabs", "storage", "alarms"],
+  "permissions": ["tabs", "storage", "alarms", "notifications"],
   "background": {
     "service_worker": "background.js",
     "type": "module"

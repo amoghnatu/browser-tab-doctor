@@ -81,6 +81,33 @@
           </label>
         </fieldset>
 
+        <fieldset>
+          <legend>Proactive notifications</legend>
+          <p class="hint">
+            Only notifies when both conditions are met; never more often than the cooldown.
+          </p>
+          <label class="checkbox">
+            <span>Enable proactive notifications</span>
+            <input type="checkbox" id="notificationsEnabled" name="notificationsEnabled" />
+          </label>
+          <label>
+            <span>Min open tabs</span>
+            <input type="number" id="notifyMinOpenTabs" name="notifyMinOpenTabs" min="1" max="10000" step="1" required />
+          </label>
+          <label>
+            <span>Long-idle days</span>
+            <input type="number" id="notifyLongIdleDays" name="notifyLongIdleDays" min="1" max="3650" step="1" required />
+          </label>
+          <label>
+            <span>Share of tabs long-idle (%)</span>
+            <input type="number" id="notifySharePercent" name="notifySharePercent" min="1" max="100" step="1" required />
+          </label>
+          <label>
+            <span>Cooldownoldown (days)</span>
+            <input type="number" id="notifyCooldownDays" name="notifyCooldownDays" min="1" max="3650" step="1" required />
+          </label>
+        </fieldset>
+
         <div class="form-actions">
           <button type="submit" class="primary" id="btn-save" data-i18n="save">Save</button>
           <p id="status" role="status" aria-live="polite"></p>

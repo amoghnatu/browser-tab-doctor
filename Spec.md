@@ -17,6 +17,7 @@ Browser Tab Doctor is a browser extension that keeps a tab on how many tabs are 
 | R9 | In the report, let the user select specific tabs (checkboxes) and either close only the selected tabs or close all listed stale tabs except the selected | 2 | Adds per-row checkboxes plus "Close selected" and "Close others" buttons beside the existing "Close all stale". See R9 detail. | Complete |
 | R10 | Before closing multiple tabs at once (any bulk action), confirm with the user | 2 | Confirmation dialog stating the exact count and action; applies to Close all stale / Close selected / Close others. See R10 detail. | Complete |
 | R11 | The report must be filterable by category ("Stale" or "Unknown last-used"), shown in-place; auto-clear the filter when all filtered tabs are closed | 2 | Client-side category filter in the report page (no navigation); an emptied category auto-resets to the unfiltered view. See R11 detail. | Complete |
+| R12 | Proactively notify the user only when tab load is high *and* a large share of tabs are long-idle; respect a multi-day cooldown; make all thresholds configurable | 2 | System notification (not daily spam). Defaults: ≥20 open tabs AND ≥35% idle ≥15 days; cooldown 7 days after a shown notification. See R12 detail. | Complete |
 
 ## Detailed spec
 
@@ -68,7 +69,7 @@ The build emits a per-browser manifest from one template. Baseline (combined bac
   "name": "Browser Tab Doctor",
   "version": "1.0.0",
   "minimum_chrome_version": "121",
-  "permissions": ["tabs", "storage", "alarms"],
+  "permissions": ["tabs", "storage", "alarms", "notifications"],
   "background": {
     "service_worker": "background.js",
     "scripts": ["background.js"],
@@ -85,7 +86,7 @@ The build emits a per-browser manifest from one template. Baseline (combined bac
 }
 ```
 
-- **Permissions rationale (minimal):** `tabs` is required to read the sensitive `url`, `title`, and `favIconUrl` properties shown in the report (counting tabs alone needs no permission); `storage` for all persistence; `alarms` for the daily schedule. **No** host permissions, content scripts, `downloads`, `notifications`, or network permissions are requested. (`action` is a manifest key, not a permission.)
+- **Permissions rationale (minimal):** `tabs` is required to read the sensitive `url`, `title`, and `favIconUrl` properties shown in the report (counting tabs alone needs no permission); `storage` for all persistence; `alarms` for the daily schedule; **`notifications`** for the rare proactive alert in R12 (opt-out via options). **No** host permissions, content scripts, `downloads`, or network permissions are requested. (`action` is a manifest key, not a permission.)
 - **Background keys:** Chromium ignores `background.scripts` from Chrome 121; Firefox ignores `background.service_worker`. Declaring both yields one artifact that runs everywhere; the build may also emit `manifest.chromium.json` / `manifest.firefox.json` if a store validator objects.
 - MV3 uses `action` (MV2's `browserAction`/`pageAction` are gone).
 
@@ -107,12 +108,20 @@ All records live in `browser.storage.local` under versioned keys; `schemaVersion
   - `trigger` (`"scheduled"` | `"on-demand"`)
 - **`Config`**
   - `schemaVersion` (number)
-  - `thresholdDays` (number, default 7, min 1)
+  - `thresholdDays` (number, default 7, min 1) — report/badge “stale” threshold (R4–R6)
   - `reportHour` (0–23, local, default 9)
   - `retentionSnapshots` (number, default 90)
   - `badgeEnabled` (boolean, default true)
   - `recomputeIntervalMinutes` (number, default 30; must be ≥ 0.5 — see constraints)
   - `privacy`: `{ truncateUrls: boolean, storeQueryStrings: boolean }`
+  - **R12 notification (optional nudge):**
+    - `notificationsEnabled` (boolean, default `true`) — master switch for system notifications
+    - `notifyMinOpenTabs` (number, default `20`, min 1) — require at least this many **open** tabs
+    - `notifyLongIdleDays` (number, default `15`, min 1) — a tab counts as “long-idle” when `idleDays >= notifyLongIdleDays` (or last-used is unknown / way-too-old)
+    - `notifySharePercent` (number, default `35`, min 1, max 100) — require long-idle count / open count × 100 ≥ this percent
+    - `notifyCooldownDays` (number, default `7`, min 1) — minimum days between two shown notifications
+- **`NotificationState`** (storage.local, not sync)
+  - `lastNotificationAt` (epoch ms | null) — wall clock when the last proactive notification was **successfully shown**; used for cooldown
 
 ### Platform constraints & verified facts
 
@@ -344,6 +353,144 @@ Every figure below was verified against official docs (see References; last veri
 
 ---
 
+### R12 — Conditional proactive system notification (configurable, cooldown)
+
+**Intent:** Most of the time the user only sees health when they open the extension (R5 badge + report). That is correct and non-annoying. When tab load is **both large and heavily long-idle**, surface a **one-shot system notification** so the user knows to open the report — without daily popups.
+
+**Default trigger (product defaults — all configurable):**
+
+Let:
+
+- `O` = number of **open** tabs in this browser (normal windows; same inventory as R1/R2).
+- `L` = number of open tabs that are **long-idle**:
+  - `lastActiveAt` is valid **and** `idleDays = floor((now − lastActiveAt) / 86400000) >= notifyLongIdleDays`, **or**
+  - `lastActiveAt` is null/invalid (unknown / way-too-old counts as long-idle for this share).
+- `share = (L / O) * 100` when `O > 0`, else `0`.
+
+Show a system notification **iff all** of the following hold:
+
+1. `notificationsEnabled === true`
+2. `O >= notifyMinOpenTabs` (default **20**)
+3. `share >= notifySharePercent` (default **35**)
+4. Cooldown: `lastNotificationAt` is null **or** `(now − lastNotificationAt) >= notifyCooldownDays * 86400000` (default **7** days)
+
+**Defaults summary:** ≥ 20 open tabs **and** ≥ 35% of open tabs long-idle (≥ 15 days or unknown last-used), and no notification in the last 7 days.
+
+**Behavior & approach:**
+
+- **Channel:** `browser.notifications.create` (permission `notifications`). Title e.g. `Browser Tab Doctor`; message includes `O`, `L`, and the long-idle day threshold (localized). Icon: extension `icons/128.png`.
+- **When evaluated (event-driven, not every tab click):**
+  1. On the **daily-check** alarm path (same hourly alarm as R8), after inventory is ready — preferred primary path so evaluation aligns with “report time of day” culture without requiring a dedicated alarm.
+  2. On **recompute** alarm (badge backstop) — secondary; still subject to the same cooldown so it cannot spam.
+  3. On **startup / install** reconcile completion — catch-up if the browser was closed during prior evaluation windows.
+- **Not** evaluated on every `tabs.onCreated` / `onActivated` (avoids churn and battery cost).
+- **After a successful `notifications.create`:** persist `lastNotificationAt = now` immediately (before returning). Failed create (permission denied, OS disabled notifications) does **not** advance cooldown.
+- **Click:** `notifications.onClicked` opens `report.html` in a tab (or focuses an existing report tab if already open) and clears the notification. Does **not** call `action.openPopup()` (still unsupported / passive policy from R5).
+- **Independence from badge (R5/R6):** Badge still uses `thresholdDays` (default 7) and real stale count only. Notification uses **separate** thresholds (`notifyLongIdleDays`, share, min open). A quiet badge day can still notify if long-idle share is high (e.g. threshold 7 but notify long-idle 15 and many tabs are 20d+); conversely badge may show while notification is in cooldown.
+- **Independence from daily snapshot (R8):** Notification does not require a `ReportSnapshot` to exist; it uses live open records. Cooldown is wall-clock days, not “one notification per calendar day only” — the multi-day cooldown subsumes “don’t notify again today.”
+- **Options UI (R7 hot-apply):** Options panel gains a **Notifications** fieldset:
+  - Enable proactive notifications (checkbox)
+  - Min open tabs (integer ≥ 1)
+  - Long-idle days (integer ≥ 1)
+  - Share of open tabs that are long-idle (%) (1–100)
+  - Cooldown days between notifications (integer ≥ 1)
+  - Short helper text: “Only notifies when both conditions are met; never more often than the cooldown.”
+  - Changes apply via `storage.onChanged` like other config (no reload).
+- **Storage:**
+  - Config fields live in `config` (may sync with other settings where `storage.sync` works).
+  - `lastNotificationAt` lives in `storage.local` only (key `lastNotificationAt`) — must not sync across devices (would suppress notifications incorrectly on another machine).
+
+**Algorithms (pure, unit-tested):**
+
+```ts
+interface NotifyDecision {
+  shouldNotify: boolean;
+  openCount: number;
+  longIdleCount: number;
+  sharePercent: number; // 0–100, floor to 1 decimal or integer in UI
+  reason?: "disabled" | "too_few_tabs" | "share_too_low" | "cooldown" | "ok";
+}
+
+function isLongIdleForNotify(r: TabRecord, longIdleDays: number, nowMs: number): boolean {
+  if (!r.isOpen) return false;
+  if (!isValidTimestamp(r.lastActiveAt, nowMs)) return true; // unknown / way-too-old
+  return idleDays(r.lastActiveAt, nowMs) >= longIdleDays;
+}
+
+function evaluateProactiveNotification(
+  open: TabRecord[],
+  cfg: Config,
+  lastNotificationAt: number | null,
+  nowMs: number,
+): NotifyDecision {
+  if (!cfg.notificationsEnabled) {
+    return { shouldNotify: false, openCount: open.length, longIdleCount: 0, sharePercent: 0, reason: "disabled" };
+  }
+  const openCount = open.filter(r => r.isOpen).length;
+  if (openCount < cfg.notifyMinOpenTabs) {
+    return { shouldNotify: false, openCount, longIdleCount: 0, sharePercent: 0, reason: "too_few_tabs" };
+  }
+  const longIdleCount = open.filter(r => isLongIdleForNotify(r, cfg.notifyLongIdleDays, nowMs)).length;
+  const sharePercent = (longIdleCount / openCount) * 100;
+  if (sharePercent < cfg.notifySharePercent) {
+    return { shouldNotify: false, openCount, longIdleCount, sharePercent, reason: "share_too_low" };
+  }
+  if (lastNotificationAt != null) {
+    const elapsed = nowMs - lastNotificationAt;
+    if (elapsed < cfg.notifyCooldownDays * 86_400_000) {
+      return { shouldNotify: false, openCount, longIdleCount, sharePercent, reason: "cooldown" };
+    }
+  }
+  return { shouldNotify: true, openCount, longIdleCount, sharePercent, reason: "ok" };
+}
+```
+
+**Background glue:**
+
+```ts
+async function maybeShowProactiveNotification(): Promise<void> {
+  await ensureReady();
+  const cfg = await getConfig();
+  const open = (await getAllTabRecords()).filter(r => r.isOpen);
+  const lastAt = await getLastNotificationAt();
+  const decision = evaluateProactiveNotification(open, cfg, lastAt, Date.now());
+  if (!decision.shouldNotify) return;
+  try {
+    await browser.notifications.create("tab-doctor-proactive", {
+      type: "basic",
+      iconUrl: browser.runtime.getURL("icons/128.png"),
+      title: "Browser Tab Doctor",
+      message: `${decision.longIdleCount} of ${decision.openCount} open tabs are idle ≥ ${cfg.notifyLongIdleDays} days. Open the report to clean up.`,
+    });
+    await setLastNotificationAt(Date.now());
+  } catch (e) {
+    // permission revoked / OS blocked — do not set cooldown
+    log("notification create failed", e);
+  }
+}
+// Called from: daily alarm, recompute alarm (after badge), post-reconcile on startup
+```
+
+**Edge cases:**
+
+- `O = 0` → never notify.
+- Clock skew / laptop sleep: cooldown uses wall clock; a missed day does not “bank” extra notifications.
+- User disables notifications in OS: create fails; no cooldown advance; badge/report still work.
+- User sets `notifySharePercent` to 100 and `notifyMinOpenTabs` to 1 → rare notify only when all open tabs are long-idle.
+- User sets cooldown to 1 → at most roughly one per day when conditions hold (still not on every recompute thanks to cooldown).
+- Store update adding `notifications` permission: browsers re-prompt / require review; existing users may need to accept the new permission before create succeeds.
+
+**Acceptance criteria:**
+
+- No notification when open tabs &lt; configured min, or long-idle share &lt; configured percent, or within cooldown, or master switch off.
+- When all conditions hold, exactly one system notification is shown and `lastNotificationAt` is updated.
+- A second evaluation within `notifyCooldownDays` does not show another notification even if conditions still hold.
+- Clicking the notification opens the report page.
+- All five R12 settings are editable in Options and apply without extension reload.
+- Pure decision logic is unit-tested (defaults 20 / 15d / 35% / 7d cooldown and boundary cases).
+
+---
+
 ### Algorithms (pseudocode)
 
 Pseudocode is TypeScript-flavored and uses the promise-based `browser.*` namespace. `now()` returns epoch ms. All handlers are registered synchronously at the top level of the background script and each persists its result before returning (the background may be killed at any time).
@@ -352,13 +499,14 @@ Pseudocode is TypeScript-flavored and uses the promise-based `browser.*` namespa
 
 ```text
 storage.local:
-  "schema"            -> { schemaVersion: number }
-  "config"            -> Config
-  "tab:<key>"         -> TabRecord            (key = UUID, stable across restarts)
-  "report:<dateKey>"  -> ReportSnapshot       (dateKey = local YYYY-MM-DD)
+  "schema"               -> { schemaVersion: number }
+  "config"               -> Config
+  "tab:<key>"            -> TabRecord            (key = UUID, stable across restarts)
+  "report:<dateKey>"     -> ReportSnapshot       (dateKey = local YYYY-MM-DD)
+  "lastNotificationAt"   -> number | null        (R12 cooldown; local only, never sync)
 
 storage.session (in-memory, cleared on browser restart — matches tabId lifetime):
-  "tabIdToKey"        -> { [tabId: number]: key }
+  "tabIdToKey"           -> { [tabId: number]: key }
 ```
 
 `tabId` is unique only within a browser session, so the `tabId → key` map lives in `storage.session`. Feature-detect it; if unavailable (older Firefox), rebuild the map by calling `reconcile()` on every cold start.
@@ -684,7 +832,7 @@ User-facing strings live in `_locales/en/messages.json` and are read via `browse
 - **Persistence:** all state — tab records, timestamps, config, and daily report history — lives in the extension's own storage (`browser.storage.local`, or IndexedDB for larger history). The browser keeps this inside its profile directory; the extension never writes to the machine's filesystem and there is no companion app.
 - **Retention:** report history is capped (default: keep the last `retentionSnapshots` = 90 daily snapshots) and older snapshots are pruned to respect the 10 MB `storage.local` quota; add the `unlimitedStorage` permission only if longer history is required.
 - **Privacy:** fully local; no network calls and no analytics/telemetry; URL/query-string truncation is configurable (`privacy.truncateUrls`, `privacy.storeQueryStrings`).
-- **Permissions:** `tabs`, `storage`, `alarms` (`action` is a manifest key, not a permission). No host permissions, content scripts, `downloads`, `notifications`, or network access. Private/incognito access is off by default.
+- **Permissions:** `tabs`, `storage`, `alarms`, `notifications` (`action` is a manifest key, not a permission). No host permissions, content scripts, `downloads`, or network access. Private/incognito access is off by default. Notifications are rare (R12) and user-disableable.
 - **Performance:** tab handling is incremental (event-driven) with a debounced recompute; a full `tabs.query` reconciliation runs on startup and on the recompute alarm. Target correct behavior at 1,000+ open tabs, with storage writes batched to respect quotas.
 - **MV3 lifecycle:** treat the background as disposable — persist after every event, rebuild state from storage on wake, use `alarms` rather than in-memory timers, and register all event listeners synchronously at the top level.
 - **Cross-browser parity:** target the `browser.*` namespace via `webextension-polyfill`; feature-detect `runtime.getBrowserInfo`, `tabs.Tab.lastAccessed`, `storage.sync`, and `persistAcrossSessions`.

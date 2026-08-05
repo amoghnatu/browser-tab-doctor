@@ -5,6 +5,14 @@ export interface ConfigValidationError {
   message: string;
 }
 
+function intInRange(
+  value: unknown,
+  min: number,
+  max: number,
+): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= min && value <= max;
+}
+
 /**
  * Validate and coerce a partial config patch. Returns errors for invalid fields.
  * Used by the options page (R7) and setConfig.
@@ -68,6 +76,52 @@ export function validateConfigPatch(
     out.debug = Boolean(patch.debug);
   }
 
+  if (patch.notificationsEnabled !== undefined) {
+    out.notificationsEnabled = Boolean(patch.notificationsEnabled);
+  }
+
+  if (patch.notifyMinOpenTabs !== undefined) {
+    const n = Number(patch.notifyMinOpenTabs);
+    if (!Number.isInteger(n) || n < 1) {
+      errors.push({ field: "notifyMinOpenTabs", message: "Must be an integer ≥ 1" });
+    } else if (n > 10000) {
+      errors.push({ field: "notifyMinOpenTabs", message: "Must be ≤ 10000" });
+    } else {
+      out.notifyMinOpenTabs = n;
+    }
+  }
+
+  if (patch.notifyLongIdleDays !== undefined) {
+    const n = Number(patch.notifyLongIdleDays);
+    if (!Number.isInteger(n) || n < 1) {
+      errors.push({ field: "notifyLongIdleDays", message: "Must be an integer ≥ 1" });
+    } else if (n > 3650) {
+      errors.push({ field: "notifyLongIdleDays", message: "Must be ≤ 3650" });
+    } else {
+      out.notifyLongIdleDays = n;
+    }
+  }
+
+  if (patch.notifySharePercent !== undefined) {
+    const n = Number(patch.notifySharePercent);
+    if (!Number.isInteger(n) || n < 1 || n > 100) {
+      errors.push({ field: "notifySharePercent", message: "Must be an integer 1–100" });
+    } else {
+      out.notifySharePercent = n;
+    }
+  }
+
+  if (patch.notifyCooldownDays !== undefined) {
+    const n = Number(patch.notifyCooldownDays);
+    if (!Number.isInteger(n) || n < 1) {
+      errors.push({ field: "notifyCooldownDays", message: "Must be an integer ≥ 1" });
+    } else if (n > 3650) {
+      errors.push({ field: "notifyCooldownDays", message: "Must be ≤ 3650" });
+    } else {
+      out.notifyCooldownDays = n;
+    }
+  }
+
   if (patch.privacy !== undefined) {
     const p: Partial<PrivacyConfig> = {};
     if (patch.privacy.truncateUrls !== undefined) {
@@ -96,7 +150,8 @@ export function mergeConfig(stored: unknown): Config {
     ...(s.privacy && typeof s.privacy === "object" ? s.privacy : {}),
   };
   return {
-    schemaVersion: typeof s.schemaVersion === "number" ? s.schemaVersion : DEFAULT_CONFIG.schemaVersion,
+    schemaVersion:
+      typeof s.schemaVersion === "number" ? s.schemaVersion : DEFAULT_CONFIG.schemaVersion,
     thresholdDays:
       typeof s.thresholdDays === "number" && s.thresholdDays >= 1
         ? s.thresholdDays
@@ -123,5 +178,21 @@ export function mergeConfig(stored: unknown): Config {
           : Boolean(privacy.storeQueryStrings),
     },
     debug: typeof s.debug === "boolean" ? s.debug : DEFAULT_CONFIG.debug,
+    notificationsEnabled:
+      typeof s.notificationsEnabled === "boolean"
+        ? s.notificationsEnabled
+        : DEFAULT_CONFIG.notificationsEnabled,
+    notifyMinOpenTabs: intInRange(s.notifyMinOpenTabs, 1, 10000)
+      ? s.notifyMinOpenTabs
+      : DEFAULT_CONFIG.notifyMinOpenTabs,
+    notifyLongIdleDays: intInRange(s.notifyLongIdleDays, 1, 3650)
+      ? s.notifyLongIdleDays
+      : DEFAULT_CONFIG.notifyLongIdleDays,
+    notifySharePercent: intInRange(s.notifySharePercent, 1, 100)
+      ? s.notifySharePercent
+      : DEFAULT_CONFIG.notifySharePercent,
+    notifyCooldownDays: intInRange(s.notifyCooldownDays, 1, 3650)
+      ? s.notifyCooldownDays
+      : DEFAULT_CONFIG.notifyCooldownDays,
   };
 }

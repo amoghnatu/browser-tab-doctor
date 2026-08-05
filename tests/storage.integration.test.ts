@@ -67,7 +67,7 @@ describe("storage layer integration", () => {
   it("returns default config after migrate", async () => {
     const cfg = await storage.getConfig();
     expect(cfg.thresholdDays).toBe(7);
-    expect(cfg.schemaVersion).toBe(1);
+    expect(cfg.schemaVersion).toBe(2);
   });
 
   it("persists and loads tab records", async () => {

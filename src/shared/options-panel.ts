@@ -51,6 +51,33 @@ export function createOptionsPanel(opts?: {
           <input type="checkbox" name="storeQueryStrings" />
         </label>
       </fieldset>
+      <fieldset>
+        <legend>Proactive notifications</legend>
+        <p class="options-panel-hint">
+          Only notifies when both conditions are met; never more often than the cooldown.
+          Does not replace the toolbar badge.
+        </p>
+        <label class="checkbox">
+          <span>Enable proactive notifications</span>
+          <input type="checkbox" name="notificationsEnabled" />
+        </label>
+        <label>
+          <span>Min open tabs</span>
+          <input type="number" name="notifyMinOpenTabs" min="1" max="10000" step="1" required />
+        </label>
+        <label>
+          <span>Long-idle days</span>
+          <input type="number" name="notifyLongIdleDays" min="1" max="3650" step="1" required />
+        </label>
+        <label>
+          <span>Share of tabs long-idle (%)</span>
+          <input type="number" name="notifySharePercent" min="1" max="100" step="1" required />
+        </label>
+        <label>
+          <span>Cooldownoldown (days)</span>
+          <input type="number" name="notifyCooldownDays" min="1" max="3650" step="1" required />
+        </label>
+      </fieldset>
       <div class="options-panel-actions">
         <button type="submit" class="primary" data-i18n="save">Save</button>
         <p class="options-panel-status" role="status" aria-live="polite"></p>
@@ -82,6 +109,11 @@ export function createOptionsPanel(opts?: {
     field("retentionSnapshots").value = String(cfg.retentionSnapshots);
     field("truncateUrls").checked = cfg.privacy.truncateUrls;
     field("storeQueryStrings").checked = cfg.privacy.storeQueryStrings;
+    field("notificationsEnabled").checked = cfg.notificationsEnabled;
+    field("notifyMinOpenTabs").value = String(cfg.notifyMinOpenTabs);
+    field("notifyLongIdleDays").value = String(cfg.notifyLongIdleDays);
+    field("notifySharePercent").value = String(cfg.notifySharePercent);
+    field("notifyCooldownDays").value = String(cfg.notifyCooldownDays);
   }
 
   function read(): Partial<Config> {
@@ -90,6 +122,11 @@ export function createOptionsPanel(opts?: {
       reportHour: Number(field("reportHour").value),
       badgeEnabled: field("badgeEnabled").checked,
       retentionSnapshots: Number(field("retentionSnapshots").value),
+      notificationsEnabled: field("notificationsEnabled").checked,
+      notifyMinOpenTabs: Number(field("notifyMinOpenTabs").value),
+      notifyLongIdleDays: Number(field("notifyLongIdleDays").value),
+      notifySharePercent: Number(field("notifySharePercent").value),
+      notifyCooldownDays: Number(field("notifyCooldownDays").value),
       privacy: {
         truncateUrls: field("truncateUrls").checked,
         storeQueryStrings: field("storeQueryStrings").checked,

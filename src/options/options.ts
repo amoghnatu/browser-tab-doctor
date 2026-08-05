@@ -13,6 +13,11 @@ const fields = {
   retentionSnapshots: document.getElementById("retentionSnapshots") as HTMLInputElement,
   truncateUrls: document.getElementById("truncateUrls") as HTMLInputElement,
   storeQueryStrings: document.getElementById("storeQueryStrings") as HTMLInputElement,
+  notificationsEnabled: document.getElementById("notificationsEnabled") as HTMLInputElement,
+  notifyMinOpenTabs: document.getElementById("notifyMinOpenTabs") as HTMLInputElement,
+  notifyLongIdleDays: document.getElementById("notifyLongIdleDays") as HTMLInputElement,
+  notifySharePercent: document.getElementById("notifySharePercent") as HTMLInputElement,
+  notifyCooldownDays: document.getElementById("notifyCooldownDays") as HTMLInputElement,
 };
 
 function fillForm(cfg: Config): void {
@@ -22,6 +27,11 @@ function fillForm(cfg: Config): void {
   fields.retentionSnapshots.value = String(cfg.retentionSnapshots);
   fields.truncateUrls.checked = cfg.privacy.truncateUrls;
   fields.storeQueryStrings.checked = cfg.privacy.storeQueryStrings;
+  fields.notificationsEnabled.checked = cfg.notificationsEnabled;
+  fields.notifyMinOpenTabs.value = String(cfg.notifyMinOpenTabs);
+  fields.notifyLongIdleDays.value = String(cfg.notifyLongIdleDays);
+  fields.notifySharePercent.value = String(cfg.notifySharePercent);
+  fields.notifyCooldownDays.value = String(cfg.notifyCooldownDays);
 }
 
 function readForm(): Partial<Config> {
@@ -30,6 +40,11 @@ function readForm(): Partial<Config> {
     reportHour: Number(fields.reportHour.value),
     badgeEnabled: fields.badgeEnabled.checked,
     retentionSnapshots: Number(fields.retentionSnapshots.value),
+    notificationsEnabled: fields.notificationsEnabled.checked,
+    notifyMinOpenTabs: Number(fields.notifyMinOpenTabs.value),
+    notifyLongIdleDays: Number(fields.notifyLongIdleDays.value),
+    notifySharePercent: Number(fields.notifySharePercent.value),
+    notifyCooldownDays: Number(fields.notifyCooldownDays.value),
     privacy: {
       truncateUrls: fields.truncateUrls.checked,
       storeQueryStrings: fields.storeQueryStrings.checked,
