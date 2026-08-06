@@ -34,6 +34,37 @@ export async function detectHostBrowser(
   );
 }
 
+/**
+ * "Google Chrome 151" / "Firefox 121.0" → readable report subtitle.
+ * Pass `extensionVersion` (manifest version) to show it next to the browser version.
+ */
+export function formatHostBrowserLabel(
+  raw: string,
+  extensionVersion?: string,
+): { text: string; title: string } {
+  const trimmed = raw.trim() || "Unknown browser";
+  const m = trimmed.match(/^(.*?)(?:\s+(\d+(?:\.\d+)*))?$/);
+  const name = (m?.[1] ?? trimmed).trim() || "Unknown browser";
+  const browserVer = m?.[2];
+  const ext =
+    extensionVersion && extensionVersion.trim()
+      ? extensionVersion.trim()
+      : "";
+
+  const hostPart = browserVer
+    ? `Running in ${name} · v${browserVer}`
+    : `Running in ${name}`;
+  const text = ext ? `${hostPart} · extension ${ext}` : hostPart;
+
+  const titleBits = [
+    browserVer ? `Browser version ${browserVer}.` : null,
+    ext ? `Browser Tab Doctor ${ext}.` : null,
+    "This install only monitors tabs in this browser profile — not other browsers.",
+  ].filter(Boolean);
+
+  return { text, title: titleBits.join(" ") };
+}
+
 /** Pure UA heuristic — exported for unit tests. */
 export function detectFromUserAgent(
   ua: string,

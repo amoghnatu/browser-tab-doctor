@@ -40,6 +40,38 @@
   line-height: 1.4;
 }
 
+.label-with-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.info-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: help;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.info-hint:hover,
+.info-hint:focus-visible {
+  color: var(--text);
+  border-color: var(--focus);
+  outline: none;
+}
+
 .options-panel-actions {
   display: flex;
   align-items: center;

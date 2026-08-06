@@ -123,12 +123,31 @@ export interface ReportSnapshot {
 export type Msg =
   | { type: "GET_STATE" }
   | { type: "REFRESH" }
-  | { type: "CLOSE_TAB"; tabId: number }
+  /** Prefer stable `key` — tabId alone can be stale after restart/SW wake. */
+  | { type: "CLOSE_TAB"; tabId: number; key?: string }
   | { type: "CLOSE_ALL_STALE" }
-  /** Bulk close an arbitrary set of tabIds (R9). */
-  | { type: "CLOSE_TABS"; tabIds: number[] }
-  | { type: "JUMP_TO_TAB"; tabId: number }
+  /** Bulk close; pass `keys` when available so we re-resolve live tabIds. */
+  | { type: "CLOSE_TABS"; tabIds: number[]; keys?: string[] }
+  | { type: "JUMP_TO_TAB"; tabId: number; key?: string }
   | { type: "GENERATE_REPORT_NOW" };
+
+/**
+ * Ground-truth counters so we can tell inventory ghosts from real double tabs.
+ * Always filled by the background when building state.
+ */
+export interface InventoryDiagnostics {
+  /** browser.tabs.query({ windowType: "normal" }) unique ids */
+  liveTabCount: number;
+  /** TabRecords with isOpen after sync (should equal liveTabCount) */
+  openRecordCount: number;
+  /** Rows in the report table (stale + unknown) */
+  listedRowCount: number;
+  /** Among listed rows, how many share a URL with another listed row */
+  listedSameUrlExtras: number;
+  /** Open storage records closed this sync because they were not tied to a live tab */
+  ghostsClosedThisSync: number;
+  extensionVersion: string;
+}
 
 export interface ExtensionState {
   config: Config;
@@ -136,6 +155,7 @@ export interface ExtensionState {
   hostBrowser: string;
   lastSnapshot: ReportSnapshot | null;
   byWindow: Array<{ windowId: number; count: number }>;
+  diagnostics: InventoryDiagnostics;
 }
 
 export type MsgResponse =

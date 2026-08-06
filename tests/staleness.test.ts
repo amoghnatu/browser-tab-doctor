@@ -3,9 +3,11 @@ import { badgeTextForCount, computeStalenessFromRecords, countByWindow } from ".
 import { DEFAULT_CONFIG, type TabRecord } from "../src/types";
 import { MS_PER_DAY } from "../src/lib/date";
 
+let nextTabId = 1;
 function tab(partial: Partial<TabRecord> & Pick<TabRecord, "key">): TabRecord {
+  // Unique tabIds by default — same tabId would be collapsed as inventory dups
   return {
-    tabId: 1,
+    tabId: nextTabId++,
     windowId: 1,
     index: 0,
     url: "https://example.com",

@@ -8,8 +8,11 @@ describe("isMsg", () => {
     expect(isMsg({ type: "CLOSE_ALL_STALE" })).toBe(true);
     expect(isMsg({ type: "GENERATE_REPORT_NOW" })).toBe(true);
     expect(isMsg({ type: "CLOSE_TAB", tabId: 3 })).toBe(true);
+    expect(isMsg({ type: "CLOSE_TAB", tabId: 3, key: "abc" })).toBe(true);
     expect(isMsg({ type: "JUMP_TO_TAB", tabId: 1 })).toBe(true);
+    expect(isMsg({ type: "JUMP_TO_TAB", tabId: 1, key: "k" })).toBe(true);
     expect(isMsg({ type: "CLOSE_TABS", tabIds: [1, 2, 3] })).toBe(true);
+    expect(isMsg({ type: "CLOSE_TABS", tabIds: [], keys: ["a"] })).toBe(true);
     expect(isMsg({ type: "CLOSE_TABS", tabIds: [] })).toBe(true);
   });
 
@@ -17,8 +20,10 @@ describe("isMsg", () => {
     expect(isMsg(null)).toBe(false);
     expect(isMsg({})).toBe(false);
     expect(isMsg({ type: "CLOSE_TAB" })).toBe(false);
+    expect(isMsg({ type: "CLOSE_TAB", tabId: 1, key: 9 })).toBe(false);
     expect(isMsg({ type: "NOPE" })).toBe(false);
     expect(isMsg({ type: "CLOSE_TABS" })).toBe(false);
     expect(isMsg({ type: "CLOSE_TABS", tabIds: ["x"] })).toBe(false);
+    expect(isMsg({ type: "CLOSE_TABS", tabIds: [1], keys: [1] })).toBe(false);
   });
 });

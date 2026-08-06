@@ -27,12 +27,13 @@
     "description": "Empty state when no tabs are open"
   },
   "summary": {
-    "message": "Open tabs: $OPEN$  |  Stale: $STALE$  |  Unknown last-used: $UNKNOWN$",
-    "description": "Report summary line",
+    "message": "$OPEN$ open in this browser  ·  $STALE$ stale  ·  $UNKNOWN$ unknown last-used  ·  $FRESH$ recent (not listed)",
+    "description": "Report summary: total open vs listed stale/unknown vs recent tabs not in the table",
     "placeholders": {
       "OPEN": { "content": "$1" },
       "STALE": { "content": "$2" },
-      "UNKNOWN": { "content": "$3" }
+      "UNKNOWN": { "content": "$3" },
+      "FRESH": { "content": "$4" }
     }
   },
   "colTitle": { "message": "Title" },

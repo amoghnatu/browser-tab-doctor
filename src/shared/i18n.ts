@@ -6,7 +6,9 @@ const FALLBACKS: Record<string, string> = {
   bannerStale: "You have $COUNT$ tabs not used in over $DAYS$ days — close the ones you don't need.",
   bannerAllClear: "All clear — no tabs are older than $DAYS$ days.",
   bannerEmpty: "No open tabs to analyze.",
-  summary: "Open tabs: $OPEN$  |  Stale: $STALE$  |  Unknown last-used: $UNKNOWN$",
+  // $OPEN$ total open · $STALE$ idle≥threshold · $UNKNOWN$ bad timestamps · $FRESH$ not listed
+  summary:
+    "$OPEN$ open in this browser  ·  $STALE$ stale  ·  $UNKNOWN$ unknown last-used  ·  $FRESH$ recent (not listed)",
   colTitle: "Title",
   colUrl: "URL",
   colFirstOpened: "First opened",
@@ -49,11 +51,23 @@ export function t(key: string, substitutions?: string | string[]): string {
   let text = FALLBACKS[key] ?? key;
   if (substitutions != null) {
     const subs = Array.isArray(substitutions) ? substitutions : [substitutions];
-    // Map common placeholder patterns used in FALLBACKS
-    const names = ["COUNT", "DAYS", "OPEN", "STALE", "UNKNOWN", "ERROR"];
+    // Numbered placeholders ($1$, $2$, …) — Chrome-compatible order
     subs.forEach((s, i) => {
-      const name = names[i] ?? String(i + 1);
-      text = text.replace(`$${name}$`, s).replace(`$${i + 1}$`, s);
+      text = text.split(`$${i + 1}$`).join(s);
+    });
+    // Named placeholders in FALLBACKS: fill in order of appearance in the string
+    const seen = new Set<string>();
+    const ordered: string[] = [];
+    for (const m of text.matchAll(/\$([A-Z][A-Z0-9]*)\$/g)) {
+      const name = m[1]!;
+      if (!seen.has(name)) {
+        seen.add(name);
+        ordered.push(name);
+      }
+    }
+    ordered.forEach((name, i) => {
+      const s = subs[i];
+      if (s != null) text = text.split(`$${name}$`).join(s);
     });
   }
   return text;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectFromUserAgent } from "../src/lib/browser-info";
+import { detectFromUserAgent, formatHostBrowserLabel } from "../src/lib/browser-info";
 
 describe("detectFromUserAgent (R1)", () => {
   it("detects Chrome", () => {
@@ -32,5 +32,30 @@ describe("detectFromUserAgent (R1)", () => {
 
   it("returns Unknown for empty UA", () => {
     expect(detectFromUserAgent("")).toBe("Unknown browser");
+  });
+});
+
+describe("formatHostBrowserLabel", () => {
+  it("clarifies that the number is the browser version", () => {
+    const r = formatHostBrowserLabel("Google Chrome 151");
+    expect(r.text).toBe("Running in Google Chrome · v151");
+    expect(r.title).toContain("151");
+    expect(r.title.toLowerCase()).toContain("this browser");
+  });
+
+  it("appends extension version next to browser version", () => {
+    const r = formatHostBrowserLabel("Google Chrome 151", "1.1.1");
+    expect(r.text).toBe("Running in Google Chrome · v151 · extension 1.1.1");
+    expect(r.title).toContain("Browser Tab Doctor 1.1.1");
+  });
+
+  it("handles missing version", () => {
+    const r = formatHostBrowserLabel("Firefox");
+    expect(r.text).toBe("Running in Firefox");
+  });
+
+  it("shows extension version even without browser version", () => {
+    const r = formatHostBrowserLabel("Firefox", "1.1.1");
+    expect(r.text).toBe("Running in Firefox · extension 1.1.1");
   });
 });

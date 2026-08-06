@@ -12,6 +12,27 @@ export interface OptionsPanelHandle {
   root: HTMLElement;
 }
 
+function esc(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/** Small ⓘ control; native title tooltip on hover/focus. */
+function infoHint(explanation: string): string {
+  const e = esc(explanation);
+  return `<abbr class="info-hint" title="${e}" aria-label="${e}">ⓘ</abbr>`;
+}
+
+function labelWithHint(text: string, hint: string, dataI18n?: string): string {
+  const textSpan = dataI18n
+    ? `<span data-i18n="${dataI18n}">${esc(text)}</span>`
+    : `<span>${esc(text)}</span>`;
+  return `<span class="label-with-hint">${textSpan}${infoHint(hint)}</span>`;
+}
+
 export function createOptionsPanel(opts?: {
   onSaved?: () => void;
   compact?: boolean;
@@ -24,57 +45,96 @@ export function createOptionsPanel(opts?: {
       <fieldset>
         <legend>Threshold &amp; schedule</legend>
         <label>
-          <span data-i18n="optThreshold">Threshold (days)</span>
+          ${labelWithHint(
+            "Threshold (days)",
+            "How many days without use before a tab is marked stale in the report and counts toward the toolbar badge. Default 7. Separate from “Long-idle days” under notifications.",
+            "optThreshold",
+          )}
           <input type="number" name="thresholdDays" min="1" max="3650" step="1" required />
         </label>
         <label>
-          <span data-i18n="optReportHour">Daily report time (hour)</span>
+          ${labelWithHint(
+            "Daily report time (hour)",
+            "Local hour (0–23) at or after which the once-per-day report snapshot may be saved. Default 9 (9:00 AM).",
+            "optReportHour",
+          )}
           <input type="number" name="reportHour" min="0" max="23" step="1" required />
         </label>
         <label class="checkbox">
-          <span data-i18n="optBadge">Show toolbar badge</span>
+          ${labelWithHint(
+            "Show toolbar badge",
+            "When on, the extension icon shows a small count of stale tabs. Empty when nothing is stale.",
+            "optBadge",
+          )}
           <input type="checkbox" name="badgeEnabled" />
         </label>
       </fieldset>
       <fieldset>
         <legend>History &amp; privacy</legend>
         <label>
-          <span data-i18n="optRetention">History to keep (days)</span>
+          ${labelWithHint(
+            "History to keep (days)",
+            "How many daily report snapshots to keep in local storage. Older ones are deleted automatically. Default 90.",
+            "optRetention",
+          )}
           <input type="number" name="retentionSnapshots" min="1" max="3650" step="1" required />
         </label>
         <label class="checkbox">
-          <span data-i18n="optTruncateUrls">Truncate URLs in report</span>
+          ${labelWithHint(
+            "Truncate URLs in report",
+            "When on, long URLs are shortened in the report table for readability (full URL still available on hover).",
+            "optTruncateUrls",
+          )}
           <input type="checkbox" name="truncateUrls" />
         </label>
         <label class="checkbox">
-          <span data-i18n="optStoreQuery">Store query strings</span>
+          ${labelWithHint(
+            "Store query strings",
+            "When off, ?search=… and #hash are stripped before saving and matching tab URLs (more private, slightly less precise matching).",
+            "optStoreQuery",
+          )}
           <input type="checkbox" name="storeQueryStrings" />
         </label>
       </fieldset>
       <fieldset>
         <legend>Proactive notifications</legend>
         <p class="options-panel-hint">
-          Only notifies when both conditions are met; never more often than the cooldown.
+          Rare system alerts when tab load is high and many tabs are long-idle.
           Does not replace the toolbar badge.
         </p>
         <label class="checkbox">
-          <span>Enable proactive notifications</span>
+          ${labelWithHint(
+            "Enable proactive notifications",
+            "Master switch. When off, no system notifications are shown (badge and report still work).",
+          )}
           <input type="checkbox" name="notificationsEnabled" />
         </label>
         <label>
-          <span>Min open tabs</span>
+          ${labelWithHint(
+            "Min open tabs",
+            "Only consider notifying if you have at least this many open tabs. Default 20.",
+          )}
           <input type="number" name="notifyMinOpenTabs" min="1" max="10000" step="1" required />
         </label>
         <label>
-          <span>Long-idle days</span>
+          ${labelWithHint(
+            "Long-idle days",
+            "A tab counts as “long-idle” for notifications if unused for at least this many days (or last-used is unknown). Default 15. Independent of the report stale threshold.",
+          )}
           <input type="number" name="notifyLongIdleDays" min="1" max="3650" step="1" required />
         </label>
         <label>
-          <span>Share of tabs long-idle (%)</span>
+          ${labelWithHint(
+            "Share of tabs long-idle (%)",
+            "Only notify if at least this percentage of open tabs are long-idle. Default 35.",
+          )}
           <input type="number" name="notifySharePercent" min="1" max="100" step="1" required />
         </label>
         <label>
-          <span>Cooldownoldown (days)</span>
+          ${labelWithHint(
+            "Cooldownoldown (days)",
+            "Minimum days to wait after a proactive notification before another one can appear — even if tab conditions are still met. Default 7.",
+          )}
           <input type="number" name="notifyCooldownDays" min="1" max="3650" step="1" required />
         </label>
       </fieldset>
@@ -85,7 +145,7 @@ export function createOptionsPanel(opts?: {
     </form>
   `;
 
-  // Apply i18n to static labels
+  // Apply i18n only to leaf text nodes (won't wipe ⓘ hints)
   root.querySelectorAll<HTMLElement>("[data-i18n]").forEach((el) => {
     const key = el.getAttribute("data-i18n");
     if (key) el.textContent = t(key);

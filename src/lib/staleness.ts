@@ -1,5 +1,6 @@
 import type { Config, StaleItem, Staleness, TabRecord } from "../types";
 import { idleDays, isValidTimestamp, WAY_TOO_OLD_IDLE_DAYS } from "./date";
+import { dedupeOpenByTabId } from "./reconcile";
 
 /**
  * Compute report rows + badge counts (R4, R5, R6).
@@ -13,10 +14,12 @@ export function computeStalenessFromRecords(
   cfg: Config,
   nowMs: number = Date.now(),
 ): Staleness {
+  // Never report two rows for the same live tabId
+  const uniqueOpen = dedupeOpenByTabId(openRecords);
   const realStale: StaleItem[] = [];
   const wayTooOld: StaleItem[] = [];
 
-  for (const r of openRecords) {
+  for (const r of uniqueOpen) {
     if (!r.isOpen) continue;
     if (!isValidTimestamp(r.lastActiveAt, nowMs)) {
       // Do not compute ~20646d from epoch 0 — flag as way-too-old for the unified table
@@ -41,11 +44,10 @@ export function computeStalenessFromRecords(
   // Unified table: corrupt timestamps first (most alarming), then real idle desc
   const stale = [...wayTooOld, ...realStale];
 
-  const open = openRecords.filter((r) => r.isOpen);
   return {
     stale,
     unknownCount: wayTooOld.length,
-    totalOpen: open.length,
+    totalOpen: uniqueOpen.length,
     // Badge only — R6
     staleCount: realStale.length,
   };

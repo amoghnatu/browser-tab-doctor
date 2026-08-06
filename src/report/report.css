@@ -1,7 +1,24 @@
 .page {
-  max-width: 1100px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 1.25rem 1.5rem 3rem;
+}
+
+/* Table + optional fun sticky notes (positioned next to mid / ancient rows) */
+.report-main {
+  position: relative;
+  display: block;
+}
+
+.report-main.has-fun-note .table-wrap {
+  /* room for sticky note + pointer on wide screens */
+  margin-right: 0;
+}
+
+@media (min-width: 1180px) {
+  .report-main.has-fun-note .table-wrap {
+    margin-right: 220px;
+  }
 }
 
 .header {
@@ -17,6 +34,31 @@
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
+  min-width: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.brand-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px var(--border);
+  background: var(--surface-2);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
 }
 
 .header h1 {
@@ -28,18 +70,26 @@
 
 .host {
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  cursor: help;
+  white-space: nowrap;
+  max-width: min(42vw, 28rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .header-right {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.6rem;
 }
 
 .threshold {
   color: var(--text-muted);
   font-size: 0.9rem;
+  white-space: nowrap;
 }
 
 .summary-bar {
@@ -53,6 +103,21 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+}
+
+.diag-text {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 0.78rem;
+  font-family: var(--mono, ui-monospace, monospace);
+  color: var(--text-muted);
+  line-height: 1.35;
+  cursor: help;
+}
+
+.diag-text.diag-bad {
+  color: #e74c3c;
+  font-weight: 600;
 }
 
 .summary-bar p {
@@ -228,11 +293,20 @@ tr.row-way-too-old:hover td {
 }
 
 .cell-url {
-  max-width: 220px;
+  max-width: 280px;
   font-family: var(--mono);
   font-size: 0.8rem;
   color: var(--text-muted);
   word-break: break-all;
+}
+
+/* When “Truncate URLs in report” is on — single-line, middle-ellipsis string */
+.cell-url-truncated {
+  max-width: 220px;
+  white-space: nowrap;
+  word-break: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cell-idle {
@@ -288,4 +362,217 @@ body.modal-open {
   color: var(--text-muted);
   font-weight: 500;
   font-style: italic;
+}
+
+/*
+ * Doctor’s notes color bands
+ * Edge on rows === sticky background (and pointer) so each note clearly
+ * belongs to its tab group. Add a new band by defining another --fun-note-*-*
+ * trio and matching .row-* / .fun-note-* classes.
+ */
+:root {
+  /*
+   * Soft sticky-pad hues — same paper vibe, clearly different categories.
+   * Mid = lemon yellow · Ancient = soft rose (classic sticky palette).
+   * Row edge + sticky fill + pointer all use the matching band tokens.
+   */
+  /* Mid-age (30–89d) — lemon sticky */
+  --fun-note-mid-bg: #ffef6e;
+  --fun-note-mid-edge: #ffef6e;
+  --fun-note-mid-bar: #e8d038;
+  --fun-note-mid-bar-end: #f5e258;
+  /* Ancient (90+d) — soft rose sticky */
+  --fun-note-ancient-bg: #ffc2d6;
+  --fun-note-ancient-edge: #ffc2d6;
+  --fun-note-ancient-bar: #f098b4;
+  --fun-note-ancient-bar-end: #ffb0c8;
+}
+
+/* Row edge = same color as that band’s sticky (explicit edge token) */
+tr.row-mid-age td {
+  box-shadow: inset 4px 0 0 var(--fun-note-mid-edge);
+}
+
+tr.row-ancient td {
+  box-shadow: inset 4px 0 0 var(--fun-note-ancient-edge);
+}
+
+/* ── Windows-style sticky notes (pure flavor) ────────────────────── */
+
+.fun-note {
+  position: absolute;
+  z-index: 4;
+  width: 200px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  box-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.08),
+    0 6px 16px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
+  color: #1a1a1a;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  font-family: "Segoe Print", "Comic Sans MS", "Segoe UI", cursive, sans-serif;
+  transform: rotate(1.2deg);
+  transform-origin: top left;
+}
+
+/* Slight tilt variety so two notes don’t look pasted */
+.fun-note-mid {
+  z-index: 5;
+  transform: rotate(-1.4deg);
+  background: var(--fun-note-mid-bg);
+}
+
+.fun-note-ancient {
+  z-index: 4;
+  transform: rotate(1.8deg);
+  background: var(--fun-note-ancient-bg);
+}
+
+.fun-note.hidden {
+  display: none !important;
+}
+
+/* Soft top bar like Windows Sticky Notes title strip */
+.fun-note-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding: 0.35rem 0.4rem 0.3rem 0.65rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.fun-note-mid .fun-note-titlebar {
+  background: linear-gradient(
+    180deg,
+    var(--fun-note-mid-bar) 0%,
+    var(--fun-note-mid-bar-end) 100%
+  );
+}
+
+.fun-note-ancient .fun-note-titlebar {
+  background: linear-gradient(
+    180deg,
+    var(--fun-note-ancient-bar) 0%,
+    var(--fun-note-ancient-bar-end) 100%
+  );
+}
+
+.fun-note-kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: rgba(0, 0, 0, 0.55);
+  text-transform: none;
+}
+
+.fun-note-body {
+  padding: 0.65rem 0.75rem 0.75rem;
+}
+
+.fun-note-text {
+  margin: 0 0 0.65rem;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+.fun-note-reply {
+  margin: 0 0 0.55rem;
+  font-size: 0.82rem;
+  color: #444;
+  font-style: italic;
+}
+
+.fun-note-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.fun-btn {
+  padding: 0.22rem 0.5rem;
+  font-size: 0.78rem;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: #222;
+}
+
+.fun-btn:hover:not(:disabled) {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.22);
+}
+
+.fun-note-dismiss {
+  width: 1.4rem;
+  height: 1.4rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 1.05rem;
+  line-height: 1;
+  border-radius: 3px;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.fun-note-dismiss:hover {
+  color: #000;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* Arrow pointing left — same color family as that sticky + its row edge */
+.fun-note-pointer {
+  position: absolute;
+  left: -10px;
+  top: 18px;
+  width: 0;
+  height: 0;
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+  border-right: 10px solid var(--fun-note-mid-edge);
+  filter: drop-shadow(-1px 0 0 rgba(0, 0, 0, 0.08));
+}
+
+.fun-note-mid .fun-note-pointer {
+  border-right-color: var(--fun-note-mid-edge);
+}
+
+.fun-note-ancient .fun-note-pointer {
+  border-right-color: var(--fun-note-ancient-edge);
+}
+
+/* Narrow: notes sit under table, no absolute alignment */
+@media (max-width: 1179px) {
+  .fun-note {
+    position: relative;
+    right: auto !important;
+    top: auto !important;
+    width: min(280px, 100%);
+    margin: 0.75rem 0 0;
+    transform: rotate(0.6deg);
+  }
+
+  .fun-note-mid {
+    transform: rotate(-0.5deg);
+  }
+
+  .fun-note-ancient {
+    transform: rotate(0.8deg);
+  }
+
+  .fun-note-pointer {
+    display: none;
+  }
+
+  .report-main.has-fun-note .table-wrap {
+    margin-right: 0;
+  }
 }

@@ -20,7 +20,14 @@ import {
   evaluateProactiveNotification,
   notificationMessage,
 } from "../lib/notify";
-import { createTabRecord, reconcileTabs, type LiveTab } from "../lib/reconcile";
+import {
+  createTabRecord,
+  dedupeOpenByTabId,
+  findBestMatch,
+  projectOpenFromTabIdMap,
+  reconcileTabs,
+  type LiveTab,
+} from "../lib/reconcile";
 import { buildSnapshot, shouldGenerateDailyReport } from "../lib/snapshot";
 import { computeStalenessFromRecords, countByWindow } from "../lib/staleness";
 import * as storage from "../lib/storage";
@@ -59,15 +66,48 @@ let readyPromise: Promise<void> | null = null;
 let hostBrowserCache: string | null = null;
 let recomputeTimer: ReturnType<typeof setTimeout> | null = null;
 
+/**
+ * Serialize all inventory mutations. Concurrent reconcile + adoptTab/onCreated
+ * was creating a full second set of open records (every report row duplicated).
+ */
+let inventoryChain: Promise<unknown> = Promise.resolve();
+/** >0 while inside withInventory — prevents re-entrant reconcile deadlocks. */
+let inventoryDepth = 0;
+
+function withInventory<T>(fn: () => Promise<T>): Promise<T> {
+  const run = inventoryChain.then(
+    async () => {
+      inventoryDepth++;
+      try {
+        return await fn();
+      } finally {
+        inventoryDepth--;
+      }
+    },
+    async () => {
+      inventoryDepth++;
+      try {
+        return await fn();
+      } finally {
+        inventoryDepth--;
+      }
+    },
+  );
+  inventoryChain = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
 async function ensureReady(): Promise<void> {
   if (!readyPromise) {
     readyPromise = (async () => {
       try {
         await storage.migrateIfNeeded();
-        const map = await storage.getSessionMap();
-        if (Object.keys(map).length === 0) {
-          await reconcile();
-        }
+        // ALWAYS full re-sync once per service-worker start / extension reload.
+        // Skipping when the session map "looked live" left ghost rows in production.
+        await reconcile();
         await ensureAlarms();
       } catch (e) {
         logger.error("ensureReady failed", e);
@@ -89,42 +129,162 @@ function scheduleRecompute(): void {
 
 // ── Core operations ─────────────────────────────────────────────────────────
 
-async function reconcile(): Promise<void> {
-  const cfg = await storage.getConfig();
-  const liveTabs = (await browser.tabs.query({
+/** Live normal-window tabs, deduped by id. */
+async function queryLiveTabs(): Promise<LiveTab[]> {
+  const raw = (await browser.tabs.query({
     windowType: "normal",
   })) as LiveTab[];
-  const allRecords = await storage.getAllTabRecords();
-  const openRecords = allRecords.filter((r) => r.isOpen);
+  const byId = new Map<number, LiveTab>();
+  for (const t of raw) {
+    if (t.id != null && t.id > 0) byId.set(t.id, t);
+  }
+  return [...byId.values()];
+}
 
-  const result = reconcileTabs(liveTabs, openRecords, cfg);
-
-  // Preserve closed historical records not touched by this reconcile
-  const resultKeys = new Set(result.records.map((r) => r.key));
-  const preserved = allRecords.filter((r) => !r.isOpen && !resultKeys.has(r.key));
-  await storage.upsertTabRecords([...result.records, ...preserved]);
-  await storage.setSessionMap(result.tabIdToKey);
-  await recomputeAndRefreshBadge();
-  logger.log("reconcile done", {
-    live: liveTabs.length,
-    open: result.records.filter((r) => r.isOpen).length,
-    closed: result.closedKeys.length,
+/**
+ * Full inventory sync: open set is EXACTLY one record per live tab id.
+ * This is the only path that may set isOpen=true for report/badge.
+ */
+async function reconcile(): Promise<void> {
+  return withInventory(async () => {
+    const { open } = await syncInventoryFromLiveUnlocked();
+    await recomputeAndRefreshBadgeFromOpen(open);
   });
 }
 
-async function recomputeAndRefreshBadge(): Promise<void> {
+/**
+ * Must run inside withInventory.
+ *
+ * First principles:
+ *   Source of truth for "what tabs exist" = browser.tabs.query (live tabs).
+ *   chrome.storage.local tab:<uuid> only holds *metadata* (first opened, last used).
+ *   The report must never list a storage row that is not a live browser tab.
+ *
+ * Algorithm: walk LIVE tabs once; assign exactly one TabRecord each; force-close
+ * every other isOpen record. open.length === liveTabs.length always.
+ */
+async function syncInventoryFromLiveUnlocked(): Promise<{
+  open: TabRecord[];
+  ghostsClosed: number;
+  liveCount: number;
+}> {
   const cfg = await storage.getConfig();
-  const open = (await storage.getAllTabRecords()).filter((r) => r.isOpen);
+  const now = Date.now();
+  const liveTabs = await queryLiveTabs();
+  const allRecords = await storage.getAllTabRecords();
+  const openBefore = allRecords.filter((r) => r.isOpen);
+
+  // Match using currently-open inventory (carry forward identity / timestamps)
+  const result = reconcileTabs(liveTabs, openBefore, cfg);
+
+  // Keep ONLY the live-tab→key winners open
+  const projected = projectOpenFromTabIdMap(
+    result.records,
+    result.tabIdToKey,
+    now,
+  );
+
+  const openKeys = new Set(projected.open.map((r) => r.key));
+  const writeByKey = new Map<string, TabRecord>();
+  for (const r of projected.open) writeByKey.set(r.key, r);
+
+  let ghostsClosed = 0;
+  for (const r of allRecords) {
+    if (openKeys.has(r.key)) continue;
+    if (r.isOpen) {
+      writeByKey.set(r.key, { ...r, isOpen: false, lastSeenAt: now });
+      ghostsClosed++;
+    }
+    // closed historical rows: leave untouched (not rewritten) unless already in map
+  }
+
+  // Persist open winners + newly closed ghosts only (smaller write)
+  await storage.upsertTabRecords([...writeByKey.values()]);
+  await storage.setSessionMap(result.tabIdToKey);
+
+  // Absolute invariant
+  if (projected.open.length !== liveTabs.length) {
+    logger.error("INVARIANT BROKEN: open !== live after sync", {
+      open: projected.open.length,
+      live: liveTabs.length,
+      tabIdToKeySize: Object.keys(result.tabIdToKey).length,
+    });
+  } else {
+    logger.log("inventory sync ok", {
+      live: liveTabs.length,
+      open: projected.open.length,
+      ghostsClosed,
+      openBefore: openBefore.length,
+    });
+  }
+
+  return {
+    open: projected.open,
+    ghostsClosed,
+    liveCount: liveTabs.length,
+  };
+}
+
+/**
+ * Open inventory for report/badge: always 1:1 with live tabs.
+ * Re-syncs when called outside the inventory lock if counts look wrong.
+ */
+async function getCanonicalOpenRecords(): Promise<TabRecord[]> {
+  if (inventoryDepth > 0) {
+    const liveTabs = await queryLiveTabs();
+    const liveIds = new Set(
+      liveTabs.map((t) => t.id).filter((id): id is number => id != null && id > 0),
+    );
+    return dedupeOpenByTabId(
+      (await storage.getAllTabRecords()).filter(
+        (r) => r.isOpen && liveIds.has(Number(r.tabId)),
+      ),
+    );
+  }
+
+  return withInventory(async () => {
+    const { open } = await syncInventoryFromLiveUnlocked();
+    return open;
+  });
+}
+
+function countSameUrlExtras(items: { url: string }[]): number {
+  const counts = new Map<string, number>();
+  for (const it of items) {
+    const u = it.url || "";
+    if (!u) continue;
+    counts.set(u, (counts.get(u) ?? 0) + 1);
+  }
+  let extras = 0;
+  for (const n of counts.values()) {
+    if (n > 1) extras += n - 1;
+  }
+  return extras;
+}
+
+async function recomputeAndRefreshBadgeFromOpen(open: TabRecord[]): Promise<void> {
+  const cfg = await storage.getConfig();
   const { staleCount } = computeStalenessFromRecords(open, cfg);
   await refreshBadge(browser, cfg, staleCount);
-  await maybeShowProactiveNotification();
+  await maybeShowProactiveNotificationFromOpen(open);
+}
+
+async function recomputeAndRefreshBadge(): Promise<void> {
+  const open = await getCanonicalOpenRecords();
+  await recomputeAndRefreshBadgeFromOpen(open);
 }
 
 /** R12: rare system notification when load is high and long-idle share is high. */
 async function maybeShowProactiveNotification(): Promise<void> {
+  const open = await getCanonicalOpenRecords();
+  await maybeShowProactiveNotificationFromOpen(open);
+}
+
+async function maybeShowProactiveNotificationFromOpen(
+  open: TabRecord[],
+): Promise<void> {
   try {
     const cfg = await storage.getConfig();
-    const open = (await storage.getAllTabRecords()).filter((r) => r.isOpen);
     const lastAt = await storage.getLastNotificationAt();
     const now = Date.now();
     const decision = evaluateProactiveNotification(open, cfg, lastAt, now);
@@ -210,7 +370,7 @@ async function maybeGenerateDailyReport(): Promise<void> {
   ) {
     return;
   }
-  const open = (await storage.getAllTabRecords()).filter((r) => r.isOpen);
+  const open = await getCanonicalOpenRecords();
   const staleness = computeStalenessFromRecords(open, cfg, now);
   const snap = buildSnapshot("scheduled", cfg, staleness.stale, staleness.totalOpen, now);
   await storage.putSnapshot(snap);
@@ -228,8 +388,32 @@ async function getHostBrowser(): Promise<string> {
 
 async function buildState(): Promise<ExtensionState> {
   const cfg = await storage.getConfig();
-  const open = (await storage.getAllTabRecords()).filter((r) => r.isOpen);
+
+  // Sync first: open set is derived ONLY from live browser tabs
+  let open: TabRecord[];
+  let ghostsClosed = 0;
+  let liveCount = 0;
+  if (inventoryDepth > 0) {
+    open = await getCanonicalOpenRecords();
+    liveCount = (await queryLiveTabs()).length;
+  } else {
+    const sync = await withInventory(() => syncInventoryFromLiveUnlocked());
+    open = sync.open;
+    ghostsClosed = sync.ghostsClosed;
+    liveCount = sync.liveCount;
+  }
+
   const staleness = computeStalenessFromRecords(open, cfg);
+  // Report "open" count = real browser tabs
+  staleness.totalOpen = liveCount;
+
+  let extVersion = "";
+  try {
+    extVersion = browser.runtime.getManifest()?.version ?? "";
+  } catch {
+    /* ignore */
+  }
+
   const lastSnapshot = await storage.getLatestSnapshot();
   return {
     config: cfg,
@@ -237,27 +421,206 @@ async function buildState(): Promise<ExtensionState> {
     hostBrowser: await getHostBrowser(),
     lastSnapshot,
     byWindow: countByWindow(open),
+    diagnostics: {
+      liveTabCount: liveCount,
+      openRecordCount: open.length,
+      listedRowCount: staleness.stale.length,
+      listedSameUrlExtras: countSameUrlExtras(staleness.stale),
+      ghostsClosedThisSync: ghostsClosed,
+      extensionVersion: extVersion,
+    },
   };
 }
 
-async function adoptTab(tab: LiveTab): Promise<TabRecord> {
+/**
+ * Attach a live browser tab to inventory (must run inside withInventory).
+ * Prefer reusing an existing open record so we never create ghost duplicates.
+ */
+async function adoptTabUnlocked(tab: LiveTab): Promise<TabRecord> {
   const cfg = await storage.getConfig();
   const now = Date.now();
-  // Reject lastAccessed: 0 — don't invent "opened today" for restored tabs
+  const open = (await storage.getAllTabRecords()).filter((r) => r.isOpen);
+
+  // 0) Session map already has this live id
+  if (tab.id != null) {
+    const mappedKey = await storage.mapGet(tab.id);
+    if (mappedKey) {
+      const mapped = await storage.getTabRecord(mappedKey);
+      if (mapped) {
+        mapped.tabId = tab.id;
+        mapped.windowId = tab.windowId ?? mapped.windowId;
+        mapped.index = tab.index;
+        mapped.url = normalizeUrl(tab.url ?? "", cfg);
+        mapped.title = tab.title ?? mapped.title;
+        mapped.pinned = !!tab.pinned;
+        mapped.discarded = !!tab.discarded;
+        mapped.lastSeenAt = now;
+        mapped.isOpen = true;
+        await storage.upsertTabRecord(mapped);
+        return mapped;
+      }
+    }
+  }
+
+  // 1) Same live tabId already on a record
+  if (tab.id != null) {
+    const byId = open.find((r) => r.tabId === tab.id);
+    if (byId) {
+      byId.tabId = tab.id;
+      byId.windowId = tab.windowId ?? byId.windowId;
+      byId.index = tab.index;
+      byId.url = normalizeUrl(tab.url ?? "", cfg);
+      byId.title = tab.title ?? byId.title;
+      byId.pinned = !!tab.pinned;
+      byId.discarded = !!tab.discarded;
+      byId.lastSeenAt = now;
+      byId.isOpen = true;
+      const accessed = coerceTimestamp(tab.lastAccessed, now);
+      if (accessed != null) {
+        byId.lastActiveAt = Math.max(byId.lastActiveAt ?? 0, accessed);
+      }
+      await storage.upsertTabRecord(byId);
+      await storage.mapSet(tab.id, byId.key);
+      return byId;
+    }
+  }
+
+  // 2) Heuristic match — carry forward identity
+  const match = findBestMatch(tab, open, new Set(), cfg);
+  if (match) {
+    const record = { ...match };
+    if (tab.id != null) record.tabId = tab.id;
+    record.windowId = tab.windowId ?? record.windowId;
+    record.index = tab.index;
+    record.url = normalizeUrl(tab.url ?? "", cfg);
+    record.title = tab.title ?? record.title;
+    record.pinned = !!tab.pinned;
+    record.discarded = !!tab.discarded;
+    record.lastSeenAt = now;
+    record.isOpen = true;
+    const accessed = coerceTimestamp(tab.lastAccessed, now);
+    if (accessed != null) {
+      record.lastActiveAt = Math.max(record.lastActiveAt ?? 0, accessed);
+      if (!record.firstOpenedAt || record.firstOpenedAt <= 0) {
+        record.firstOpenedAt = accessed;
+      }
+    }
+    await storage.upsertTabRecord(record);
+    if (tab.id != null) await storage.mapSet(tab.id, record.key);
+    return record;
+  }
+
+  // 3) Truly new tab
   const accessed = coerceTimestamp(tab.lastAccessed, now);
   const key = crypto.randomUUID();
   const record =
     accessed != null
       ? createTabRecord(key, tab, accessed, accessed, cfg, now)
-      : createTabRecord(key, tab, /*firstOpenedAt*/ 0, /*lastActiveAt*/ null, cfg, now);
+      : createTabRecord(
+          key,
+          tab,
+          /*firstOpenedAt*/ 0,
+          /*lastActiveAt*/ null,
+          cfg,
+          now,
+        );
   await storage.upsertTabRecord(record);
   if (tab.id != null) await storage.mapSet(tab.id, key);
   return record;
 }
 
+async function adoptTab(tab: LiveTab): Promise<TabRecord> {
+  if (inventoryDepth > 0) return adoptTabUnlocked(tab);
+  return withInventory(() => adoptTabUnlocked(tab));
+}
+
+/** Resolve a live browser tabId from stable key and/or possibly-stale tabId. */
+async function resolveLiveTabId(opts: {
+  tabId?: number;
+  key?: string;
+}): Promise<{ tabId: number; url: string } | null> {
+  const tryId = async (id: number, expectedUrl?: string) => {
+    if (id <= 0) return null;
+    try {
+      const live = await browser.tabs.get(id);
+      if (expectedUrl && live.url) {
+        const cfg = await storage.getConfig();
+        // Soft check — URL may have navigated; still allow close of this id
+        void cfg;
+      }
+      return { tabId: id, url: live.url ?? expectedUrl ?? "" };
+    } catch {
+      return null;
+    }
+  };
+
+  // Prefer stable key → current record.tabId (after reconcile)
+  if (opts.key) {
+    const rec = await storage.getTabRecord(opts.key);
+    if (rec) {
+      const hit = await tryId(rec.tabId, rec.url);
+      if (hit) return hit;
+      // Last resort: find a live tab with the same URL (closest index)
+      if (rec.url) {
+        try {
+          const cfg = await storage.getConfig();
+          const want = normalizeUrl(rec.url, cfg);
+          const all = (await browser.tabs.query({
+            windowType: "normal",
+          })) as LiveTab[];
+          const candidates = all.filter(
+            (t) =>
+              t.id != null &&
+              normalizeUrl(t.url ?? "", cfg) === want,
+          );
+          if (candidates.length > 0) {
+            candidates.sort(
+              (a, b) =>
+                Math.abs(a.index - rec.index) - Math.abs(b.index - rec.index),
+            );
+            const best = candidates[0]!;
+            if (best.id != null) {
+              // Repair inventory mapping
+              rec.tabId = best.id;
+              rec.windowId = best.windowId ?? rec.windowId;
+              rec.index = best.index;
+              rec.isOpen = true;
+              rec.lastSeenAt = Date.now();
+              await storage.upsertTabRecord(rec);
+              await storage.mapSet(best.id, rec.key);
+              return { tabId: best.id, url: best.url ?? rec.url };
+            }
+          }
+        } catch (e) {
+          logger.warn("resolveLiveTabId URL fallback failed", e);
+        }
+      }
+    }
+  }
+
+  if (opts.tabId != null) {
+    const hit = await tryId(opts.tabId);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** Mark a ghost inventory row closed when the live tab is gone. */
+async function markKeyClosed(key: string | undefined): Promise<void> {
+  if (!key) return;
+  const rec = await storage.getTabRecord(key);
+  if (!rec || !rec.isOpen) return;
+  rec.isOpen = false;
+  rec.lastSeenAt = Date.now();
+  await storage.upsertTabRecord(rec);
+}
+
 // ── Message handler ─────────────────────────────────────────────────────────
 
-/** Remove tabs by id; skip internal pages; tolerate already-closed tabs. */
+/**
+ * Remove live tabs by id; skip internal pages; tolerate already-closed tabs.
+ * Callers should pass ids already resolved via resolveLiveTabId when possible.
+ */
 async function removeTabIds(tabIds: number[]): Promise<number> {
   if (tabIds.length === 0) return 0;
   const toClose: number[] = [];
@@ -266,7 +629,6 @@ async function removeTabIds(tabIds: number[]): Promise<number> {
     try {
       const rec = await storage.recordFor(tabId);
       if (rec && !isClosable(rec.url)) continue;
-      // Prefer live tab URL when present
       try {
         const live = await browser.tabs.get(tabId);
         if (live.url && !isClosable(live.url)) continue;
@@ -280,15 +642,15 @@ async function removeTabIds(tabIds: number[]): Promise<number> {
     }
   }
   if (toClose.length === 0) return 0;
+  // Deduplicate — ghost rows can resolve to the same live id
+  const unique = [...new Set(toClose)];
   try {
-    // Batch remove is more reliable than one-by-one in MV3
-    await browser.tabs.remove(toClose);
-    return toClose.length;
+    await browser.tabs.remove(unique);
+    return unique.length;
   } catch (e) {
-    // Fall back to one-by-one if batch fails partially
     logger.warn("batch tabs.remove failed; falling back", e);
     let closed = 0;
-    for (const tabId of toClose) {
+    for (const tabId of unique) {
       try {
         await browser.tabs.remove(tabId);
         closed++;
@@ -300,24 +662,77 @@ async function removeTabIds(tabIds: number[]): Promise<number> {
   }
 }
 
+/** Re-resolve keys/ids to live tabIds after a fresh reconcile. */
+async function resolveTargetsToLiveIds(
+  tabIds: number[],
+  keys?: string[],
+): Promise<number[]> {
+  await reconcile();
+  const liveIds: number[] = [];
+  const seen = new Set<number>();
+
+  const add = (id: number) => {
+    if (id > 0 && !seen.has(id)) {
+      seen.add(id);
+      liveIds.push(id);
+    }
+  };
+
+  if (keys && keys.length > 0) {
+    for (const key of keys) {
+      const resolved = await resolveLiveTabId({ key });
+      if (resolved) add(resolved.tabId);
+      else await markKeyClosed(key);
+    }
+  }
+
+  for (const id of tabIds) {
+    if (seen.has(id)) continue;
+    const resolved = await resolveLiveTabId({ tabId: id });
+    if (resolved) add(resolved.tabId);
+  }
+
+  return liveIds;
+}
+
 async function handleMessage(msg: Msg): Promise<MsgResponse> {
   await ensureReady();
   switch (msg.type) {
-    case "GET_STATE":
+    case "GET_STATE": {
+      // buildState always runs live-tab 1:1 sync
       return { type: "STATE", state: await buildState() };
+    }
 
     case "REFRESH": {
-      await reconcile();
       return { type: "STATE", state: await buildState() };
     }
 
     case "CLOSE_TAB": {
       try {
-        const rec = await storage.recordFor(msg.tabId);
-        if (rec && !isClosable(rec.url)) {
-          return { type: "CLOSE_TAB_RESULT", ok: false, error: "Internal page cannot be closed" };
+        // Re-sync tabIds first — report rows may hold stale ids / ghost duplicates
+        await reconcile();
+        const resolved = await resolveLiveTabId({
+          tabId: msg.tabId,
+          key: msg.key,
+        });
+        if (!resolved) {
+          await markKeyClosed(msg.key);
+          await recomputeAndRefreshBadge();
+          return {
+            type: "CLOSE_TAB_RESULT",
+            ok: false,
+            error:
+              "Could not find that tab (stale list entry). Refreshed inventory — try again if it still appears.",
+          };
         }
-        await browser.tabs.remove(msg.tabId);
+        if (!isClosable(resolved.url)) {
+          return {
+            type: "CLOSE_TAB_RESULT",
+            ok: false,
+            error: "Internal page cannot be closed",
+          };
+        }
+        await browser.tabs.remove(resolved.tabId);
         return { type: "CLOSE_TAB_RESULT", ok: true };
       } catch (e) {
         return { type: "CLOSE_TAB_RESULT", ok: false, error: String(e) };
@@ -326,27 +741,43 @@ async function handleMessage(msg: Msg): Promise<MsgResponse> {
 
     case "CLOSE_ALL_STALE": {
       // R9: bulk close every closable report row (stale + unknown/way-too-old)
+      await reconcile();
       const cfg = await storage.getConfig();
-      const open = (await storage.getAllTabRecords()).filter((r) => r.isOpen);
+      const open = await getCanonicalOpenRecords();
       const { stale } = computeStalenessFromRecords(open, cfg);
-      const ids = stale
-        .filter((s) => isClosable(s.url) && s.tabId > 0)
-        .map((s) => s.tabId);
+      const keys = stale.filter((s) => isClosable(s.url)).map((s) => s.key);
+      const ids = await resolveTargetsToLiveIds(
+        stale.map((s) => s.tabId),
+        keys,
+      );
       const closed = await removeTabIds(ids);
       return { type: "CLOSE_ALL_STALE_RESULT", closed };
     }
 
     case "CLOSE_TABS": {
-      // R9: close an arbitrary set of tabIds (selected / others / filtered)
-      const ids = msg.tabIds.filter((id) => id > 0);
+      // R9: close by keys (preferred) and/or tabIds
+      const ids = await resolveTargetsToLiveIds(msg.tabIds, msg.keys);
       const closed = await removeTabIds(ids);
       return { type: "CLOSE_TABS_RESULT", closed };
     }
 
     case "JUMP_TO_TAB": {
       try {
-        const tab = await browser.tabs.get(msg.tabId);
-        await browser.tabs.update(msg.tabId, { active: true });
+        await reconcile();
+        const resolved = await resolveLiveTabId({
+          tabId: msg.tabId,
+          key: msg.key,
+        });
+        if (!resolved) {
+          await markKeyClosed(msg.key);
+          return {
+            type: "JUMP_TO_TAB_RESULT",
+            ok: false,
+            error: "Tab no longer open (stale list entry removed).",
+          };
+        }
+        const tab = await browser.tabs.get(resolved.tabId);
+        await browser.tabs.update(resolved.tabId, { active: true });
         if (tab.windowId != null) {
           await browser.windows.update(tab.windowId, { focused: true });
         }
@@ -358,7 +789,7 @@ async function handleMessage(msg: Msg): Promise<MsgResponse> {
 
     case "GENERATE_REPORT_NOW": {
       const cfg = await storage.getConfig();
-      const open = (await storage.getAllTabRecords()).filter((r) => r.isOpen);
+      const open = await getCanonicalOpenRecords();
       const staleness = computeStalenessFromRecords(open, cfg);
       // On-demand does NOT overwrite/fulfill the daily scheduled slot if one exists;
       // we store under today's key only when no scheduled snapshot exists yet,
@@ -423,24 +854,18 @@ browser.tabs.onCreated.addListener((tab) => {
   void (async () => {
     try {
       await ensureReady();
-      const cfg = await storage.getConfig();
-      const key = crypto.randomUUID();
-      const now = Date.now();
-      const accessed = coerceTimestamp(tab.lastAccessed, now);
-      // Tab created while we run: firstOpened is now. lastActive: now if active, else
-      // lastAccessed if valid, else now (just created — not "way too old").
-      const firstOpenedAt = now;
-      const lastActiveAt = tab.active ? now : (accessed ?? now);
-      const record = createTabRecord(
-        key,
-        tab as LiveTab,
-        firstOpenedAt,
-        lastActiveAt,
-        cfg,
-        now,
-      );
-      await storage.upsertTabRecord(record);
-      if (tab.id != null) await storage.mapSet(tab.id, key);
+      await withInventory(async () => {
+        const rec = await adoptTabUnlocked(tab as LiveTab);
+        const now = Date.now();
+        if (tab.active) rec.lastActiveAt = now;
+        rec.lastSeenAt = now;
+        rec.isOpen = true;
+        if (tab.id != null) {
+          rec.tabId = tab.id;
+          await storage.mapSet(tab.id, rec.key);
+        }
+        await storage.upsertTabRecord(rec);
+      });
       scheduleRecompute();
     } catch (e) {
       logger.error("onCreated", e);
@@ -452,18 +877,24 @@ browser.tabs.onActivated.addListener(({ tabId }) => {
   void (async () => {
     try {
       await ensureReady();
-      let rec = await storage.recordFor(tabId);
-      if (!rec) {
-        try {
-          const tab = await browser.tabs.get(tabId);
-          rec = await adoptTab(tab as LiveTab);
-        } catch {
-          return;
+      await withInventory(async () => {
+        let rec = await storage.recordFor(tabId);
+        if (!rec) {
+          try {
+            const tab = await browser.tabs.get(tabId);
+            // Inline adopt without nested lock (we're already in withInventory)
+            rec = await adoptTabUnlocked(tab as LiveTab);
+          } catch {
+            return;
+          }
         }
-      }
-      rec.lastActiveAt = Date.now();
-      rec.lastSeenAt = Date.now();
-      await storage.upsertTabRecord(rec);
+        rec.lastActiveAt = Date.now();
+        rec.lastSeenAt = Date.now();
+        rec.tabId = tabId;
+        rec.isOpen = true;
+        await storage.upsertTabRecord(rec);
+        await storage.mapSet(tabId, rec.key);
+      });
       scheduleRecompute();
     } catch (e) {
       logger.error("onActivated", e);
@@ -475,23 +906,30 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   void (async () => {
     try {
       await ensureReady();
-      let rec = await storage.recordFor(tabId);
-      if (!rec) {
-        rec = await adoptTab(tab as LiveTab);
-      }
-      const cfg = await storage.getConfig();
-      if (changeInfo.url) rec.url = normalizeUrl(changeInfo.url, cfg);
-      if (changeInfo.title) rec.title = changeInfo.title;
-      if ("discarded" in changeInfo) rec.discarded = !!changeInfo.discarded;
-      if ("pinned" in changeInfo) rec.pinned = !!changeInfo.pinned;
-      if (tab.active && changeInfo.status === "complete") {
-        rec.lastActiveAt = Date.now();
-      }
-      rec.lastSeenAt = Date.now();
-      rec.tabId = tabId;
-      if (tab.windowId != null) rec.windowId = tab.windowId;
-      if (typeof tab.index === "number") rec.index = tab.index;
-      await storage.upsertTabRecord(rec);
+      // Full read-modify-write under lock — prevents reopening ghosts after reconcile
+      await withInventory(async () => {
+        let rec = await storage.recordFor(tabId);
+        if (!rec) {
+          rec = await adoptTabUnlocked(tab as LiveTab);
+        }
+        // Re-read after adopt in case another writer closed a ghost
+        const latest = (await storage.getTabRecord(rec.key)) ?? rec;
+        const cfg = await storage.getConfig();
+        if (changeInfo.url) latest.url = normalizeUrl(changeInfo.url, cfg);
+        if (changeInfo.title) latest.title = changeInfo.title;
+        if ("discarded" in changeInfo) latest.discarded = !!changeInfo.discarded;
+        if ("pinned" in changeInfo) latest.pinned = !!changeInfo.pinned;
+        if (tab.active && changeInfo.status === "complete") {
+          latest.lastActiveAt = Date.now();
+        }
+        latest.lastSeenAt = Date.now();
+        latest.tabId = tabId;
+        latest.isOpen = true;
+        if (tab.windowId != null) latest.windowId = tab.windowId;
+        if (typeof tab.index === "number") latest.index = tab.index;
+        await storage.upsertTabRecord(latest);
+        await storage.mapSet(tabId, latest.key);
+      });
       scheduleRecompute();
     } catch (e) {
       logger.error("onUpdated", e);
@@ -503,13 +941,15 @@ browser.tabs.onRemoved.addListener((tabId) => {
   void (async () => {
     try {
       await ensureReady();
-      const rec = await storage.recordFor(tabId);
-      if (rec) {
-        rec.isOpen = false;
-        rec.lastSeenAt = Date.now();
-        await storage.upsertTabRecord(rec);
-      }
-      await storage.mapDelete(tabId);
+      await withInventory(async () => {
+        const rec = await storage.recordFor(tabId);
+        if (rec) {
+          rec.isOpen = false;
+          rec.lastSeenAt = Date.now();
+          await storage.upsertTabRecord(rec);
+        }
+        await storage.mapDelete(tabId);
+      });
       scheduleRecompute();
     } catch (e) {
       logger.error("onRemoved", e);
@@ -519,13 +959,15 @@ browser.tabs.onRemoved.addListener((tabId) => {
 
 async function updateWindowIndex(tabId: number): Promise<void> {
   await ensureReady();
-  const tab = await browser.tabs.get(tabId);
-  const rec = await storage.recordFor(tabId);
-  if (!rec) return;
-  rec.windowId = tab.windowId ?? rec.windowId;
-  rec.index = tab.index;
-  rec.lastSeenAt = Date.now();
-  await storage.upsertTabRecord(rec);
+  await withInventory(async () => {
+    const tab = await browser.tabs.get(tabId);
+    const rec = await storage.recordFor(tabId);
+    if (!rec) return;
+    rec.windowId = tab.windowId ?? rec.windowId;
+    rec.index = tab.index;
+    rec.lastSeenAt = Date.now();
+    await storage.upsertTabRecord(rec);
+  });
   scheduleRecompute();
 }
 

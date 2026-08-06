@@ -1,27 +1,14 @@
 /**
  * Zip dist/chromium and dist/firefox for store upload.
  * Output: release/browser-tab-doctor-{chromium|firefox}-{version}.zip
+ *
+ * Cross-platform: PowerShell Compress-Archive on Windows, `zip` on macOS/Linux.
  */
-import {
-  createWriteStream,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  statSync,
-} from "node:fs";
-import { join, relative } from "node:path";
+import { existsSync, mkdirSync, readFileSync, statSync, unlinkSync } from "node:fs";
+import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createRequire } from "node:module";
-import { pipeline } from "node:stream/promises";
-
-// Use Node 20+ zlib + manual zip via archiver-free approach: PowerShell-compatible
-// pure zip using only built-ins is painful; prefer child_process Compress-Archive on win,
-// or write a minimal store-compatible zip with the 'fflate' if present.
-// Simplest reliable cross-platform: use Node's child_process for best-effort.
-
 import { execFileSync } from "node:child_process";
-import { dirname } from "node:path";
+import { platform } from "node:os";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
@@ -36,29 +23,41 @@ function assertPackage(dir, label) {
   }
 }
 
-function zipWithPowerShell(sourceDir, outZip) {
-  const ps = `
-    if (Test-Path -LiteralPath '${outZip.replace(/'/g, "''")}') {
-      Remove-Item -LiteralPath '${outZip.replace(/'/g, "''")}' -Force
-    }
-    Compress-Archive -Path '${join(sourceDir, "*").replace(/'/g, "''")}' -DestinationPath '${outZip.replace(/'/g, "''")}' -Force
-  `;
-  execFileSync(
-    "powershell.exe",
-    ["-NoProfile", "-Command", ps],
-    { stdio: "inherit" },
-  );
+function zipDir(sourceDir, outZip) {
+  if (existsSync(outZip)) unlinkSync(outZip);
+
+  if (platform() === "win32") {
+    const ps = `
+      Compress-Archive -Path '${join(sourceDir, "*").replace(/'/g, "''")}' -DestinationPath '${outZip.replace(/'/g, "''")}' -Force
+    `;
+    execFileSync("powershell.exe", ["-NoProfile", "-Command", ps], {
+      stdio: "inherit",
+    });
+    return;
+  }
+
+  // Unix: zip contents of sourceDir so manifest.json is at zip root
+  execFileSync("zip", ["-r", "-q", outZip, "."], {
+    cwd: sourceDir,
+    stdio: "inherit",
+  });
 }
 
 const targets = [
-  { dir: join(root, "dist", "chromium"), name: `browser-tab-doctor-chromium-${version}.zip` },
-  { dir: join(root, "dist", "firefox"), name: `browser-tab-doctor-firefox-${version}.zip` },
+  {
+    dir: join(root, "dist", "chromium"),
+    name: `browser-tab-doctor-chromium-${version}.zip`,
+  },
+  {
+    dir: join(root, "dist", "firefox"),
+    name: `browser-tab-doctor-firefox-${version}.zip`,
+  },
 ];
 
 for (const t of targets) {
   assertPackage(t.dir, t.name);
   const out = join(releaseDir, t.name);
-  zipWithPowerShell(t.dir, out);
+  zipDir(t.dir, out);
   const size = statSync(out).size;
   console.log(`wrote ${out} (${size} bytes)`);
 }

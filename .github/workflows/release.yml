@@ -1,0 +1,74 @@
+# Automated GitHub Release when you push a version tag (e.g. v1.1.4).
+#
+# Typical flow:
+#   npm run version:bump -- patch
+#   # edit CHANGELOG.md
+#   git commit -am "Release vX.Y.Z" && git push
+#   git tag vX.Y.Z && git push origin vX.Y.Z
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: CI (test + build + validate)
+        run: npm run ci
+
+      - name: Read version
+        id: ver
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_REF_NAME" != "v${VERSION}" ]; then
+            echo "::warning::Tag $GITHUB_REF_NAME does not match package.json v${VERSION}"
+          fi
+
+      - name: Pack store zips
+        run: npm run pack
+
+      - name: Extract changelog section
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
+          python3 << 'PY'
+          import re, pathlib, os
+          version = os.environ["VERSION"]
+          text = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8") if pathlib.Path("CHANGELOG.md").exists() else ""
+          m = re.search(rf"## \[{re.escape(version)}\][^\n]*\n(.*?)(?=\n## |\Z)", text, re.S)
+          body = (m.group(1).strip() if m else f"Browser Tab Doctor **{version}**\n\nSee CHANGELOG.md.")
+          pathlib.Path("release-body.md").write_text(body + "\n", encoding="utf-8")
+          print(body[:800])
+          PY
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Browser Tab Doctor ${{ steps.ver.outputs.version }}
+          body_path: release-body.md
+          files: |
+            release/browser-tab-doctor-chromium-${{ steps.ver.outputs.version }}.zip
+            release/browser-tab-doctor-firefox-${{ steps.ver.outputs.version }}.zip
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

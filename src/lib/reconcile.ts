@@ -40,8 +40,14 @@ export function createTabRecord(
 }
 
 /**
- * Heuristic identity match when tabId is not stable across restarts (R3).
- * Prefer same URL + closest index; fall back to title + closest index.
+ * Identity match for a live tab against open inventory (R3).
+ * Order:
+ *  1) Exact tabId (stable within a browser session / extension reload)
+ *  2) Same URL + closest index
+ *  3) Same title + closest index
+ *
+ * Matching tabId first is critical: after extension reload, tabIds usually
+ * stay the same while a missed reconcile + event handlers can create ghosts.
  */
 export function findBestMatch(
   tab: LiveTab,
@@ -49,24 +55,43 @@ export function findBestMatch(
   used: Set<string>,
   cfg: Config,
 ): TabRecord | null {
-  const url = normalizeUrl(tab.url ?? "", cfg);
-  const candidates = openRecords.filter((r) => !used.has(r.key) && r.url === url);
-  if (candidates.length === 0) {
-    const byTitle = openRecords.filter(
-      (r) => !used.has(r.key) && r.title === (tab.title ?? "") && (tab.title ?? "") !== "",
+  if (tab.id != null) {
+    const byId = openRecords.find(
+      (r) => !used.has(r.key) && r.tabId === tab.id && r.tabId > 0,
     );
-    if (byTitle.length === 0) return null;
-    return (
-      [...byTitle].sort(
-        (a, b) => Math.abs(a.index - tab.index) - Math.abs(b.index - tab.index),
-      )[0] ?? null
-    );
+    if (byId) return byId;
   }
-  return (
-    [...candidates].sort(
-      (a, b) => Math.abs(a.index - tab.index) - Math.abs(b.index - tab.index),
-    )[0] ?? null
-  );
+
+  const url = normalizeUrl(tab.url ?? "", cfg);
+  // Empty URL is common for pending tabs — don't mass-merge on ""
+  if (url) {
+    const candidates = openRecords.filter(
+      (r) => !used.has(r.key) && r.url === url && r.url !== "",
+    );
+    if (candidates.length > 0) {
+      return (
+        [...candidates].sort(
+          (a, b) => Math.abs(a.index - tab.index) - Math.abs(b.index - tab.index),
+        )[0] ?? null
+      );
+    }
+  }
+
+  const title = tab.title ?? "";
+  if (title) {
+    const byTitle = openRecords.filter(
+      (r) => !used.has(r.key) && r.title === title && r.title !== "",
+    );
+    if (byTitle.length > 0) {
+      return (
+        [...byTitle].sort(
+          (a, b) => Math.abs(a.index - tab.index) - Math.abs(b.index - tab.index),
+        )[0] ?? null
+      );
+    }
+  }
+
+  return null;
 }
 
 export interface ReconcileResult {
@@ -154,9 +179,118 @@ export function reconcileTabs(
     }
   }
 
+  // Hard invariant: at most one open record per live tabId.
+  // Collapse any remaining duplicates (corrupt inventory / race survivors).
+  const openByTabId = new Map<number, string>(); // tabId → winning key
+  for (const r of updated.values()) {
+    if (!r.isOpen || r.tabId <= 0) continue;
+    const prevKey = openByTabId.get(r.tabId);
+    if (prevKey == null) {
+      openByTabId.set(r.tabId, r.key);
+      continue;
+    }
+    if (prevKey === r.key) continue;
+    // Prefer the key already assigned in tabIdToKey for this live id
+    const preferredKey = tabIdToKey[r.tabId] ?? prevKey;
+    const loserKey = preferredKey === r.key ? prevKey : r.key;
+    const winnerKey = preferredKey === r.key ? r.key : prevKey;
+    const loser = updated.get(loserKey);
+    if (loser) {
+      updated.set(loserKey, { ...loser, isOpen: false, lastSeenAt: nowMs });
+      if (!closedKeys.includes(loserKey)) closedKeys.push(loserKey);
+    }
+    openByTabId.set(r.tabId, winnerKey);
+    tabIdToKey[r.tabId] = winnerKey;
+  }
+
+  // Ensure tabIdToKey only points at open winners
+  for (const tabIdStr of Object.keys(tabIdToKey)) {
+    const tabId = Number(tabIdStr);
+    const key = tabIdToKey[tabId];
+    if (!key) continue;
+    const rec = updated.get(key);
+    if (!rec || !rec.isOpen) {
+      delete tabIdToKey[tabId];
+    }
+  }
+
   return {
     records: Array.from(updated.values()),
     tabIdToKey,
     closedKeys,
   };
+}
+
+/**
+ * Pure: collapse open records so each live tabId appears at most once.
+ * Coerces tabId with Number() so string ids from storage cannot slip through.
+ * Drops tabId<=0 open rows (cannot be acted on; cause ghost duplicates).
+ */
+export function dedupeOpenByTabId(openRecords: TabRecord[]): TabRecord[] {
+  const byId = new Map<number, TabRecord>();
+  for (const r of openRecords) {
+    if (!r.isOpen) continue;
+    const id = Number(r.tabId);
+    if (!Number.isFinite(id) || id <= 0) continue;
+    const normalized = r.tabId === id ? r : { ...r, tabId: id };
+    const prev = byId.get(id);
+    if (!prev || normalized.lastSeenAt >= prev.lastSeenAt) {
+      byId.set(id, normalized);
+    }
+  }
+  return [...byId.values()];
+}
+
+/**
+ * After reconcile: keep ONLY records assigned to a live tab via tabIdToKey.
+ * Everything else that was open is forced closed.
+ * Guarantees open.length === Object.keys(tabIdToKey).length.
+ */
+export function projectOpenFromTabIdMap(
+  records: TabRecord[],
+  tabIdToKey: Record<number, string>,
+  nowMs: number = Date.now(),
+): { open: TabRecord[]; all: TabRecord[] } {
+  const keyToTabId = new Map<string, number>();
+  for (const [idStr, key] of Object.entries(tabIdToKey)) {
+    const id = Number(idStr);
+    if (Number.isFinite(id) && id > 0 && key) keyToTabId.set(key, id);
+  }
+
+  const byKey = new Map<string, TabRecord>();
+  for (const r of records) {
+    byKey.set(r.key, { ...r });
+  }
+
+  const open: TabRecord[] = [];
+  for (const [key, tabId] of keyToTabId) {
+    const rec = byKey.get(key);
+    if (!rec) continue;
+    const fixed: TabRecord = {
+      ...rec,
+      tabId,
+      isOpen: true,
+      lastSeenAt: nowMs,
+    };
+    byKey.set(key, fixed);
+    open.push(fixed);
+  }
+
+  // Force-close any other open record
+  for (const [key, rec] of byKey) {
+    if (rec.isOpen && !keyToTabId.has(key)) {
+      byKey.set(key, { ...rec, isOpen: false, lastSeenAt: nowMs });
+    }
+  }
+
+  // Dedupe open by tabId one more time (corrupt map)
+  const openDeduped = dedupeOpenByTabId(open);
+  const openKeys = new Set(openDeduped.map((r) => r.key));
+  for (const [key, rec] of byKey) {
+    if (rec.isOpen && !openKeys.has(key)) {
+      byKey.set(key, { ...rec, isOpen: false, lastSeenAt: nowMs });
+    }
+  }
+
+  return { open: openDeduped, all: Array.from(byKey.values()) };
 }

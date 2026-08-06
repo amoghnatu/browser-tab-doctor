@@ -11,14 +11,58 @@ This guide covers shipping the extension to users via browser stores and keeping
 ## Build release zips
 
 ```bash
-npm run ci
-# From repo root on Windows PowerShell:
-Compress-Archive -Path dist/chromium/* -DestinationPath browser-tab-doctor-chromium-1.0.1.zip -Force
-# Firefox (recommended via web-ext):
-npx web-ext build -s dist/firefox -a release --overwrite-dest
+npm run release
+# → release/browser-tab-doctor-chromium-<version>.zip
+# → release/browser-tab-doctor-firefox-<version>.zip
 ```
 
 Never zip `node_modules`, `src`, or secrets. Store packages must have `manifest.json` at the zip root.
+
+---
+
+## Automated GitHub release (recommended)
+
+CI and release packaging are automated via GitHub Actions.
+
+### One-time
+
+- Repo: **Settings → Actions → General → Workflow permissions** → allow **Read and write** (so the release workflow can create a release and upload assets).
+
+### Cut a new version
+
+```bash
+# 1) Bump version in package.json + both manifests
+npm run version:bump -- patch    # or: minor | major | 1.2.0
+
+# 2) Edit CHANGELOG.md — add a ## [x.y.z] section at the top
+
+# 3) Commit on main
+git add -A
+git commit -m "Release vX.Y.Z"
+git push origin main
+
+# 4) Tag and push the tag (triggers .github/workflows/release.yml)
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+The **Release** workflow will:
+
+1. `npm ci` → `npm run ci` (test + build + validate)
+2. `npm run pack` (chromium + firefox zips)
+3. Create a **GitHub Release** for tag `vX.Y.Z` with both zips attached
+4. Use the matching `CHANGELOG.md` section as the release body when present
+
+### Local-only pack (no GitHub)
+
+```bash
+npm run release
+# Upload zips from release/ to Chrome Web Store / AMO / Edge manually
+```
+
+### What is *not* automated (store accounts)
+
+Chrome Web Store, AMO, and Edge still need a human (or store-specific APIs with API keys) to upload the zip and click submit. GitHub automation stops at **built, tested, versioned artifacts**.
 
 ---
 

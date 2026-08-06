@@ -12,10 +12,22 @@
     <div class="page">
       <header class="header">
         <div class="header-left">
-          <h1 id="app-title">Browser Tab Doctor</h1>
-          <span class="host" id="host-browser" aria-live="polite"></span>
+          <div class="brand">
+            <img
+              class="brand-logo"
+              src="./icons/128.png"
+              width="44"
+              height="44"
+              alt=""
+              decoding="async"
+            />
+            <div class="brand-text">
+              <h1 id="app-title">Browser Tab Doctor</h1>
+            </div>
+          </div>
         </div>
         <div class="header-right">
+          <span class="host" id="host-browser" aria-live="polite"></span>
           <span class="threshold" id="threshold-label"></span>
           <button type="button" id="btn-refresh" data-i18n="refresh" data-i18n-aria="refresh">
             Refresh
@@ -28,6 +40,8 @@
 
       <section class="summary-bar" aria-label="Summary">
         <p id="summary-text"></p>
+        <!-- Ground-truth inventory counters (always on while we debug duplicates) -->
+        <p id="diag-text" class="diag-text" aria-live="polite"></p>
         <div class="toolbar" role="toolbar" aria-label="Report tools">
           <label class="sort-label">
             Category
@@ -49,7 +63,7 @@
             </select>
           </label>
           <div id="bulk-actions" class="bulk-actions">
-            <button type="button" class="danger" id="btn-close-all">Close all listed</button>
+            <button type="button" class="danger" id="btn-close-all">Close all closable listed</button>
             <button type="button" class="danger" id="btn-close-selected" disabled>
               Close selected
             </button>
@@ -60,28 +74,89 @@
         </div>
       </section>
 
-      <div class="table-wrap">
-        <table id="stale-table" aria-label="Tabs">
-          <thead>
-            <tr>
-              <th scope="col" class="cell-check">
-                <input
-                  type="checkbox"
-                  id="select-all"
-                  aria-label="Select all closable stale tabs"
-                />
-              </th>
-              <th scope="col" data-i18n="colTitle">Title</th>
-              <th scope="col" data-i18n="colUrl">URL</th>
-              <th scope="col" data-i18n="colFirstOpened">First opened</th>
-              <th scope="col" data-i18n="colLastUsed">Last used</th>
-              <th scope="col" data-i18n="colIdle">Idle</th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="stale-body"></tbody>
-        </table>
-        <p id="empty-stale" class="muted hidden">No tabs to show.</p>
+      <div class="report-main">
+        <div class="table-wrap">
+          <table id="stale-table" aria-label="Tabs">
+            <thead>
+              <tr>
+                <th scope="col" class="cell-check">
+                  <input
+                    type="checkbox"
+                    id="select-all"
+                    aria-label="Select all closable stale tabs"
+                  />
+                </th>
+                <th scope="col" data-i18n="colTitle">Title</th>
+                <th scope="col" data-i18n="colUrl">URL</th>
+                <th scope="col" data-i18n="colFirstOpened">First opened</th>
+                <th scope="col" data-i18n="colLastUsed">Last used</th>
+                <th scope="col" data-i18n="colIdle">Idle</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="stale-body"></tbody>
+          </table>
+          <p id="empty-stale" class="muted hidden">No tabs to show.</p>
+        </div>
+
+        <!-- Pure flavor: Windows-style stickies aligned to mid-age / ancient bands -->
+        <aside
+          id="fun-note-mid"
+          class="fun-note fun-note-mid hidden"
+          aria-label="Playful doctor's note about slightly older tabs"
+          hidden
+        >
+          <div class="fun-note-titlebar">
+            <span class="fun-note-kicker">Doctor's note</span>
+            <button
+              type="button"
+              class="fun-note-dismiss"
+              id="fun-note-mid-dismiss"
+              aria-label="Dismiss note"
+            >
+              ×
+            </button>
+          </div>
+          <div class="fun-note-body">
+            <p class="fun-note-text" id="fun-note-mid-text"></p>
+            <p class="fun-note-reply hidden" id="fun-note-mid-reply" aria-live="polite"></p>
+            <div class="fun-note-actions" id="fun-note-mid-actions">
+              <button type="button" class="fun-btn" data-fun="yes">Yes</button>
+              <button type="button" class="fun-btn" data-fun="no">No</button>
+              <button type="button" class="fun-btn" data-fun="maybe">Maybe</button>
+            </div>
+          </div>
+          <div class="fun-note-pointer" aria-hidden="true"></div>
+        </aside>
+
+        <aside
+          id="fun-note-ancient"
+          class="fun-note fun-note-ancient hidden"
+          aria-label="Playful doctor's note about very old tabs"
+          hidden
+        >
+          <div class="fun-note-titlebar">
+            <span class="fun-note-kicker">Doctor's note</span>
+            <button
+              type="button"
+              class="fun-note-dismiss"
+              id="fun-note-ancient-dismiss"
+              aria-label="Dismiss note"
+            >
+              ×
+            </button>
+          </div>
+          <div class="fun-note-body">
+            <p class="fun-note-text" id="fun-note-ancient-text"></p>
+            <p class="fun-note-reply hidden" id="fun-note-ancient-reply" aria-live="polite"></p>
+            <div class="fun-note-actions" id="fun-note-ancient-actions">
+              <button type="button" class="fun-btn" data-fun="yes">Yes</button>
+              <button type="button" class="fun-btn" data-fun="no">No</button>
+              <button type="button" class="fun-btn" data-fun="maybe">Maybe</button>
+            </div>
+          </div>
+          <div class="fun-note-pointer" aria-hidden="true"></div>
+        </aside>
       </div>
     </div>
 

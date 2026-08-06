@@ -13,11 +13,24 @@ export function isMsg(value: unknown): value is Msg {
     case "GENERATE_REPORT_NOW":
       return true;
     case "CLOSE_TAB":
-    case "JUMP_TO_TAB":
-      return typeof (value as { tabId?: unknown }).tabId === "number";
+    case "JUMP_TO_TAB": {
+      const v = value as { tabId?: unknown; key?: unknown };
+      if (typeof v.tabId !== "number") return false;
+      if (v.key !== undefined && typeof v.key !== "string") return false;
+      return true;
+    }
     case "CLOSE_TABS": {
-      const ids = (value as { tabIds?: unknown }).tabIds;
-      return Array.isArray(ids) && ids.every((id) => typeof id === "number");
+      const v = value as { tabIds?: unknown; keys?: unknown };
+      const ids = v.tabIds;
+      if (!Array.isArray(ids) || !ids.every((id) => typeof id === "number")) {
+        return false;
+      }
+      if (v.keys !== undefined) {
+        if (!Array.isArray(v.keys) || !v.keys.every((k) => typeof k === "string")) {
+          return false;
+        }
+      }
+      return true;
     }
     default:
       return false;

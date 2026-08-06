@@ -19,7 +19,14 @@
           <legend>Threshold &amp; schedule</legend>
 
           <label>
-            <span data-i18n="optThreshold">Threshold (days)</span>
+            <span class="label-with-hint">
+              <span data-i18n="optThreshold">Threshold (days)</span>
+              <abbr
+                class="info-hint"
+                title="How many days without use before a tab is marked stale in the report and counts toward the toolbar badge. Default 7. Separate from “Long-idle days” under notifications."
+                aria-label="How many days without use before a tab is marked stale in the report and counts toward the toolbar badge. Default 7."
+              >ⓘ</abbr>
+            </span>
             <input
               type="number"
               id="thresholdDays"
@@ -28,13 +35,18 @@
               max="3650"
               step="1"
               required
-              aria-describedby="threshold-hint"
             />
           </label>
-          <p id="threshold-hint" class="hint">Integer ≥ 1. Tabs idle this many days are flagged stale.</p>
 
           <label>
-            <span data-i18n="optReportHour">Daily report time (hour)</span>
+            <span class="label-with-hint">
+              <span data-i18n="optReportHour">Daily report time (hour)</span>
+              <abbr
+                class="info-hint"
+                title="Local hour (0–23) at or after which the once-per-day report snapshot may be saved. Default 9 (9:00 AM)."
+                aria-label="Local hour 0–23 for the daily report snapshot. Default 9."
+              >ⓘ</abbr>
+            </span>
             <input
               type="number"
               id="reportHour"
@@ -43,13 +55,18 @@
               max="23"
               step="1"
               required
-              aria-describedby="hour-hint"
             />
           </label>
-          <p id="hour-hint" class="hint">Local hour 0–23. Snapshot is generated at/after this hour once per day.</p>
 
           <label class="checkbox">
-            <span data-i18n="optBadge">Show toolbar badge</span>
+            <span class="label-with-hint">
+              <span data-i18n="optBadge">Show toolbar badge</span>
+              <abbr
+                class="info-hint"
+                title="When on, the extension icon shows a small count of stale tabs. Empty when nothing is stale."
+                aria-label="When on, the extension icon shows a small count of stale tabs."
+              >ⓘ</abbr>
+            </span>
             <input type="checkbox" id="badgeEnabled" name="badgeEnabled" />
           </label>
         </fieldset>
@@ -58,7 +75,14 @@
           <legend>History &amp; privacy</legend>
 
           <label>
-            <span data-i18n="optRetention">History to keep (days)</span>
+            <span class="label-with-hint">
+              <span data-i18n="optRetention">History to keep (days)</span>
+              <abbr
+                class="info-hint"
+                title="How many daily report snapshots to keep in local storage. Older ones are deleted automatically. Default 90."
+                aria-label="How many daily report snapshots to keep. Default 90."
+              >ⓘ</abbr>
+            </span>
             <input
               type="number"
               id="retentionSnapshots"
@@ -71,12 +95,26 @@
           </label>
 
           <label class="checkbox">
-            <span data-i18n="optTruncateUrls">Truncate URLs in report</span>
+            <span class="label-with-hint">
+              <span data-i18n="optTruncateUrls">Truncate URLs in report</span>
+              <abbr
+                class="info-hint"
+                title="When on, long URLs are shortened in the report table for readability (full URL still available on hover)."
+                aria-label="When on, long URLs are shortened in the report table."
+              >ⓘ</abbr>
+            </span>
             <input type="checkbox" id="truncateUrls" name="truncateUrls" />
           </label>
 
           <label class="checkbox">
-            <span data-i18n="optStoreQuery">Store query strings</span>
+            <span class="label-with-hint">
+              <span data-i18n="optStoreQuery">Store query strings</span>
+              <abbr
+                class="info-hint"
+                title="When off, ?search=… and #hash are stripped before saving and matching tab URLs (more private, slightly less precise matching)."
+                aria-label="When off, query strings are stripped before storing URLs."
+              >ⓘ</abbr>
+            </span>
             <input type="checkbox" id="storeQueryStrings" name="storeQueryStrings" />
           </label>
         </fieldset>
@@ -84,26 +122,62 @@
         <fieldset>
           <legend>Proactive notifications</legend>
           <p class="hint">
-            Only notifies when both conditions are met; never more often than the cooldown.
+            Rare system alerts when tab load is high and many tabs are long-idle.
+            Does not replace the toolbar badge.
           </p>
           <label class="checkbox">
-            <span>Enable proactive notifications</span>
+            <span class="label-with-hint">
+              Enable proactive notifications
+              <abbr
+                class="info-hint"
+                title="Master switch. When off, no system notifications are shown (badge and report still work)."
+                aria-label="Master switch for system notifications."
+              >ⓘ</abbr>
+            </span>
             <input type="checkbox" id="notificationsEnabled" name="notificationsEnabled" />
           </label>
           <label>
-            <span>Min open tabs</span>
+            <span class="label-with-hint">
+              Min open tabs
+              <abbr
+                class="info-hint"
+                title="Only consider notifying if you have at least this many open tabs. Default 20."
+                aria-label="Minimum open tabs required before a notification can fire. Default 20."
+              >ⓘ</abbr>
+            </span>
             <input type="number" id="notifyMinOpenTabs" name="notifyMinOpenTabs" min="1" max="10000" step="1" required />
           </label>
           <label>
-            <span>Long-idle days</span>
+            <span class="label-with-hint">
+              Long-idle days
+              <abbr
+                class="info-hint"
+                title="A tab counts as “long-idle” for notifications if unused for at least this many days (or last-used is unknown). Default 15. Independent of the report stale threshold."
+                aria-label="Days unused before a tab counts as long-idle for notifications. Default 15."
+              >ⓘ</abbr>
+            </span>
             <input type="number" id="notifyLongIdleDays" name="notifyLongIdleDays" min="1" max="3650" step="1" required />
           </label>
           <label>
-            <span>Share of tabs long-idle (%)</span>
+            <span class="label-with-hint">
+              Share of tabs long-idle (%)
+              <abbr
+                class="info-hint"
+                title="Only notify if at least this percentage of open tabs are long-idle. Default 35."
+                aria-label="Percentage of open tabs that must be long-idle. Default 35."
+              >ⓘ</abbr>
+            </span>
             <input type="number" id="notifySharePercent" name="notifySharePercent" min="1" max="100" step="1" required />
           </label>
           <label>
-            <span>Cooldownoldown (days)</span>
+            <span class="label-with-hint">
+              Cooldown (days)
+              <abbr
+                class="info-hint"
+                title="Minimum days to wait after a proactive notification before another one can appear — even if tab conditions are still met. Default 7."
+                aria-label="Minimum days between proactive notifications. Default 7."
+              >ⓘ</abbr>
+            </span>
             <input type="number" id="notifyCooldownDays" name="notifyCooldownDays" min="1" max="3650" step="1" required />
           </label>
         </fieldset>
