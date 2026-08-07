@@ -4,6 +4,26 @@ All notable changes to Browser Tab Doctor are documented here.
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.5] — 2026-08-07
+
+### Fixed
+
+- **Doctor’s note sticky alignment:** notes are positioned by first matching row (top → bottom). The ancient (pink) note no longer appears below the mid-age (yellow) note when fossil tabs sort first.
+- Narrow layout stacks notes in the same row order.
+
+### Docs
+
+- README and PUBLISHING list live store URLs for Chrome, Edge, and Firefox.
+
+### Store packages
+
+After `npm run release`:
+
+- `release/browser-tab-doctor-chromium-1.1.5.zip`
+- `release/browser-tab-doctor-firefox-1.1.5.zip`
+
+---
+
 ## [1.1.4] — 2026-08-06
 
 ### Highlights

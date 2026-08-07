@@ -2,11 +2,18 @@
   "manifest_version": 3,
   "name": "__MSG_appName__",
   "description": "__MSG_appDescription__",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "default_locale": "en",
-  "permissions": ["tabs", "storage", "alarms", "notifications"],
+  "permissions": [
+    "tabs",
+    "storage",
+    "alarms",
+    "notifications"
+  ],
   "background": {
-    "scripts": ["background.js"],
+    "scripts": [
+      "background.js"
+    ],
     "type": "module"
   },
   "action": {
@@ -34,7 +41,9 @@
       "id": "browser-tab-doctor@amoghnatu.github.io",
       "strict_min_version": "121.0",
       "data_collection_permissions": {
-        "required": ["none"]
+        "required": [
+          "none"
+        ]
       }
     }
   }
