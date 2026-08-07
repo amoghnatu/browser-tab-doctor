@@ -829,8 +829,11 @@ function showFunNote(band: FunNoteBand, count: number): void {
 }
 
 /**
- * Pin each sticky note’s top to the first matching band row
- * so it clearly refers to those tabs (not the toolbar).
+ * Pin each sticky note’s top to the first matching band row.
+ *
+ * Place notes in *visual row order* (top → bottom), not fixed mid-then-ancient.
+ * Old order put mid first, then pushed ancient down on “overlap” even when the
+ * ancient row was *above* the mid rows (pink edge at top, pink note below yellow).
  */
 function positionFunNotes(): void {
   const bands: FunNoteBand[] = ["mid", "ancient"];
@@ -838,39 +841,82 @@ function positionFunNotes(): void {
   if (!main) return;
 
   const narrow = window.matchMedia("(max-width: 1179px)").matches;
-  const placed: { top: number; height: number }[] = [];
+  if (narrow) {
+    for (const band of bands) {
+      const n = funNoteEls(band);
+      if (n.root.hidden || n.root.classList.contains("hidden")) continue;
+      n.root.style.top = "";
+      n.root.style.right = "";
+    }
+    // DOM order under table: match first-row order so the higher band appears first
+    orderFunNotesInDomByRow();
+    return;
+  }
+
+  type Planned = {
+    band: FunNoteBand;
+    root: HTMLElement;
+    desiredTop: number;
+    height: number;
+  };
+  const planned: Planned[] = [];
+  const mainRect = main.getBoundingClientRect();
 
   for (const band of bands) {
     const n = funNoteEls(band);
     if (n.root.hidden || n.root.classList.contains("hidden")) continue;
-
-    if (narrow) {
-      n.root.style.top = "";
-      n.root.style.right = "";
-      continue;
-    }
-
     const first = els.body.querySelector(n.rowSelector) as HTMLElement | null;
     if (!first) continue;
-
-    const mainRect = main.getBoundingClientRect();
     const rowRect = first.getBoundingClientRect();
-    let top = rowRect.top - mainRect.top + main.scrollTop;
+    const desiredTop = rowRect.top - mainRect.top + main.scrollTop;
+    planned.push({
+      band,
+      root: n.root,
+      desiredTop,
+      height: n.root.offsetHeight,
+    });
+  }
 
-    // Avoid stacking on top of a previously placed note
+  // Higher rows first so collision only pushes notes further down the page
+  planned.sort((a, b) => a.desiredTop - b.desiredTop);
+
+  const placed: { top: number; height: number }[] = [];
+  for (const item of planned) {
+    let top = item.desiredTop;
     for (const p of placed) {
-      const overlap = top < p.top + p.height + 12 && top + n.root.offsetHeight > p.top;
-      if (overlap) {
-        top = p.top + p.height + 14;
+      const gap = 14;
+      const overlaps =
+        top < p.top + p.height + gap && top + item.height > p.top - gap;
+      if (overlaps) {
+        // Always push the *lower* note down — never yank an upper-band note below a lower one
+        top = Math.max(top, p.top + p.height + gap);
       }
     }
-
-    const maxTop = Math.max(0, main.scrollHeight - n.root.offsetHeight - 8);
+    const maxTop = Math.max(0, main.scrollHeight - item.height - 8);
     top = Math.min(Math.max(0, top), maxTop);
+    item.root.style.top = `${Math.round(top)}px`;
+    item.root.style.right = "0";
+    // Higher z-index for the note that belongs higher in the table (pointer clarity)
+    item.root.style.zIndex = String(10 - placed.length);
+    placed.push({ top, height: item.height });
+  }
+}
 
-    n.root.style.top = `${Math.round(top)}px`;
-    n.root.style.right = "0";
-    placed.push({ top, height: n.root.offsetHeight });
+/** On narrow layouts notes stack under the table — order them by first row Y. */
+function orderFunNotesInDomByRow(): void {
+  const main = els.funNoteMid.parentElement;
+  if (!main) return;
+  const entries: { band: FunNoteBand; y: number; root: HTMLElement }[] = [];
+  for (const band of ["mid", "ancient"] as const) {
+    const n = funNoteEls(band);
+    if (n.root.hidden || n.root.classList.contains("hidden")) continue;
+    const first = els.body.querySelector(n.rowSelector) as HTMLElement | null;
+    const y = first?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY;
+    entries.push({ band, y, root: n.root });
+  }
+  entries.sort((a, b) => a.y - b.y);
+  for (const e of entries) {
+    main.appendChild(e.root);
   }
 }
 
@@ -888,8 +934,10 @@ function updateFunNote(visible: StaleItem[]): void {
     showFunNote(band, n);
   }
   syncFunNoteLayoutClass();
-  // Align after layout paints so row offsets are correct
-  requestAnimationFrame(() => positionFunNotes());
+  // Double rAF: wait for table + sticky heights after unhiding notes
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => positionFunNotes());
+  });
 }
 
 function onFunAnswer(band: FunNoteBand, answer: "yes" | "no" | "maybe"): void {
